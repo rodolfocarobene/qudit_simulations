@@ -46,7 +46,7 @@ print(circuit)
 # - GridQid
 # - Lineqid
 #
-# An intereseting function may be: circ.qid_shape
+# An interesting function may be: circ.qid_shape
 
 # +
 # Create an instance of the qutrit gate defined above.
@@ -64,4 +64,41 @@ gate = QutritPlusGate()
 
 # Because it acts on qutrits, its unitary is a 3 by 3 matrix.
 print(cirq.unitary(gate))
+# -
+
+# Cirq's simulators can be used to simulate or sample from circuits which act on qudits.
+#
+# Simulators like cirq.Simulator and cirq.DensityMatrixSimulator will return simulation results with larger states than the same size qubit circuit when simulating qudit circuits.
+# The size of the state returned is determined by the product of the dimensions of the qudits being simulated.
+# For example, the state vector output of cirq.Simulator after simulating a circuit on a qubit, a qutrit, and a qutrit will have 2 * 3 * 3 = 18 elements.
+# You can call cirq.qid_shape(simulation_result) to check the qudit dimensions.
+
+# +
+# Create a circuit from the gate we defined above.
+q0 = cirq.LineQid(0, dimension=3)
+circuit = cirq.Circuit(QutritPlusGate()(q0))
+
+# Run a simulation of this circuit.
+sim = cirq.Simulator()
+result = sim.simulate(circuit)
+
+# Verify that the returned state is that of a qutrit.
+print(cirq.qid_shape(result))
+
+# Create a circuit with three qutrit gates.
+q0, q1 = cirq.LineQid.range(2, dimension=3)
+circuit = cirq.Circuit(
+    [
+        QutritPlusGate()(q0),
+        QutritPlusGate()(q1),
+        QutritPlusGate()(q1),
+        cirq.measure(q0, q1, key="x"),
+    ]
+)
+
+# Sample from this circuit.
+result = cirq.sample(circuit, repetitions=3)
+
+# See that the results are all integers from 0 to 2.
+print(result)
 # -
