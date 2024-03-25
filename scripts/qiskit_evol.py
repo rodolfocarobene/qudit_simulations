@@ -15,6 +15,10 @@
 
 # %% [markdown]
 # ## Fermi-Hubbard evolution using Qiskit
+#
+# import matplotlib.pyplot as plt
+# import numpy as np
+# from qiskit.circuit import QuantumCircuit
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,7 +29,7 @@ from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import Statevector
 from qiskit.synthesis import SuzukiTrotter
 from qiskit_nature.second_q.hamiltonians import FermiHubbardModel
-from qiskit_nature.second_q.hamiltonians.lattices import LineLattice
+from qiskit_nature.second_q.hamiltonians.lattices import BoundaryCondition, LineLattice
 from qiskit_nature.second_q.mappers import JordanWignerMapper
 
 # %% [markdown]
@@ -57,8 +61,9 @@ def evolve(temps, steps_for_step=10, J=1, v=0):
 
         evolved_state = QuantumCircuit(num_nodes * 2)
 
-        for i in range(num_nodes):
-            evolved_state.x(2 * i)  # set all in up for start
+        evolved_state.x(0)  # set first node as up
+        evolved_state.x(2)  # and second half-filled
+        evolved_state.x(3)
 
         evolved_state.append(evol_gate, range(num_nodes * 2))
 
@@ -127,20 +132,29 @@ for res in results:
     down0 = 0
     up1 = 0
     down1 = 0
-    for key in res:
-        if key[0] == "1":
-            up0 += res[key]
-        if key[1] == "1":
-            down0 += res[key]
-        if key[2] == "1":
-            up1 += res[key]
-        if key[3] == "1":
-            down1 += res[key]
 
-    tot_up0.append(up0)
-    tot_down0.append(down0)
-    tot_up1.append(up1)
-    tot_down1.append(down1)
+    void0 = 0
+    void1 = 0
+
+    for key in res:
+        if key[3] == "1":
+            up0 += res[key]
+        if key[2] == "1":
+            down0 += res[key]
+        if key[3] != "1" and key[2] != "1":
+            void0 += res[key]
+
+        if key[1] == "1":
+            up1 += res[key]
+        if key[0] == "1":
+            down1 += res[key]
+        if key[1] != "1" and key[0] != "1":
+            void1 += res[key]
+
+    tot_up0.append(up0 / (up0 + down0 + void0))
+    tot_down0.append(down0 / (up0 + down0 + void0))
+    tot_up1.append(up1 / (up1 + down1 + void1))
+    tot_down1.append(down1 / (up1 + down1 + void1))
 
 # %%
 plt.plot(t, tot_up0, "o-", label="N(0)up")
@@ -150,5 +164,7 @@ plt.plot(t, tot_up1, "^--", label="N(1)up")
 plt.plot(t, tot_down1, "^--", label="N(1)down")
 
 plt.legend()
+
+plt.savefig("plots/4qubits.pdf")
 
 # %%

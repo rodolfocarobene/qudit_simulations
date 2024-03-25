@@ -346,6 +346,8 @@ print(result)
 # -
 
 # ### Evolution
+#
+# Evolution starting with state (13) that represents a node in up and a node half-filled
 
 # +
 J = 1
@@ -359,14 +361,14 @@ tot_up0 = [
     (res.probabilities["q0"][1] + res.probabilities["q0"][3] / 2) for res in results
 ]
 tot_up1 = [
-    (res.probabilities["q1"][1] + res.probabilities["q0"][3] / 2) for res in results
+    (res.probabilities["q1"][1] + res.probabilities["q1"][3] / 2) for res in results
 ]
 
 tot_down0 = [
     (res.probabilities["q0"][2] + res.probabilities["q0"][3] / 2) for res in results
 ]
 tot_down1 = [
-    (res.probabilities["q1"][2] + res.probabilities["q0"][3] / 2) for res in results
+    (res.probabilities["q1"][2] + res.probabilities["q1"][3] / 2) for res in results
 ]
 1
 plt.plot(t, tot_up0, "o-", label="N(0)up")
@@ -376,4 +378,6 @@ plt.plot(t, tot_up1, "^--", label="N(1)up")
 plt.plot(t, tot_down1, "^--", label="N(1)down")
 
 plt.legend()
+
+plt.savefig("plots/2ququart.pdf")
 # -
