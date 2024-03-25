@@ -15,16 +15,11 @@
 
 # %% [markdown]
 # ## Fermi-Hubbard evolution using Qiskit
-#
-# import matplotlib.pyplot as plt
-# import numpy as np
-# from qiskit.circuit import QuantumCircuit
 
+# %%
 import matplotlib.pyplot as plt
 import numpy as np
 from qiskit.circuit import QuantumCircuit
-
-# %%
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import Statevector
 from qiskit.synthesis import SuzukiTrotter
