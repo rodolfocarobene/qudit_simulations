@@ -78,7 +78,7 @@ line_lattice = LineLattice(num_nodes=num_nodes, boundary_condition=boundary_cond
 line_lattice.draw()
 
 # %%
-t = 1.0  # the interaction parameter
+t = -1.0  # the interaction parameter
 v = 1.0  # the onsite potential
 u = 0.0  # the interaction parameter U
 
@@ -107,10 +107,10 @@ Statevector(evolved_state).probabilities_dict()
 # ### Evolution
 
 # %%
-J = 1
+J = -1
 v = 1
 
-t = np.arange(0, 2 * J, J / 2)
+t = np.arange(0, 5, 1 / 2)
 results = evolve(t, steps_for_step=10, J=J, v=v)
 
 # %%

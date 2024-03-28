@@ -6,7 +6,7 @@ from cirq import Circuit, Gate, LineQid, measure, sample
 from sympy import I, Matrix, Transpose, exp, eye
 from sympy.physics.quantum import TensorProduct
 
-# ### Sympy definitions
+# ### Matrices definitions
 
 # +
 sx = Matrix([[0, 1], [1, 0]])
@@ -41,10 +41,10 @@ bra_3 = Transpose(ket_3)
 X = ket_0 * bra_1 + ket_1 * bra_2 + ket_2 * bra_3 + ket_3 * bra_0
 
 ucsum_sympy = (
-    TensorProduct(Matrix(ket_0 * bra_0), id)
-    + TensorProduct(Matrix(ket_1 * bra_1), X)
-    + TensorProduct(Matrix(ket_2 * bra_2), X * X)
-    + TensorProduct(Matrix(ket_3 * bra_3), X * X * X)
+    TensorProduct(Matrix(ket_0 * bra_0), X)
+    + TensorProduct(Matrix(ket_1 * bra_1), X * X)
+    + TensorProduct(Matrix(ket_2 * bra_2), X * X * X)
+    + TensorProduct(Matrix(ket_3 * bra_3), X * X * X * X)
 )
 ad_ucsum_sympy = ucsum_sympy.adjoint()
 
@@ -54,52 +54,71 @@ ad_ucsum_sympy = ucsum_sympy.adjoint()
 # ### Definition of the primitives
 
 
-# +
-class To0(Gate):
+class X_P_ij(Gate):
+    def __init__(self, i, j, P=np.pi, *args, **kwargs):
+        self.i = i
+        self.j = j
+        self.phase = P
+        super()
+        self.matrix = np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
+        )
+        self.matrix[i][i] = self.matrix[j][j] = np.cos(P / 2)
+        self.matrix[j][i] = self.matrix[i][j] = -1j * np.sin(P / 2)
+
     def _qid_shape_(self):
         return (4,)
 
     def _unitary_(self):
-        return np.array([[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        return self.matrix
 
     def _circuit_diagram_info_(self, args):
-        return "|0>"
+        return f"X({self.phase:.2f})_{self.i}{self.j}"
 
 
-class To1(Gate):
+class Y_P_ij(Gate):
+    def __init__(self, i, j, P, *args, **kwargs):
+        self.i = i
+        self.j = j
+        self.phase = P
+        super()
+        self.matrix = np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
+        )
+        self.matrix[i][i] = self.matrix[j][j] = np.cos(P / 2)
+        self.matrix[j][i] = np.sin(P / 2)
+        self.matrix[i][j] = -np.sin(P / 2)
+
     def _qid_shape_(self):
         return (4,)
 
     def _unitary_(self):
-        return np.array([[0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]])
+        return self.matrix
 
     def _circuit_diagram_info_(self, args):
-        return "|1>"
+        return f"Y({self.phase:.2f})_{self.i}{self.j}"
 
 
-class To2(Gate):
+class Z_P_ij(Gate):
+    def __init__(self, i, j, P, *args, **kwargs):
+        self.i = i
+        self.j = j
+        self.phase = P
+        super()
+        self.matrix = np.array(
+            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
+        )
+        self.matrix[i][i] = np.exp(-1j * P / 2)
+        self.matrix[j][j] = np.exp(1j * P / 2)
+
     def _qid_shape_(self):
         return (4,)
 
     def _unitary_(self):
-        return np.array([[0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0], [0, 0, 0, 0]])
+        return self.matrix
 
     def _circuit_diagram_info_(self, args):
-        return "|2>"
-
-
-class To3(Gate):
-    def _qid_shape_(self):
-        return (4,)
-
-    def _unitary_(self):
-        return np.array([[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [1, 0, 0, 0]])
-
-    def _circuit_diagram_info_(self, args):
-        return "|3>"
-
-
-# -
+        return f"Z({self.phase:.2f})_{self.i}{self.j}"
 
 
 class Gamma1(Gate):
@@ -273,14 +292,17 @@ class Result:
             self.probabilities[key] = prob_key
 
 
-def evolve(temps, steps_for_step=10, J=1, v=0):
+# # Implementation 1
+
+
+def evolve(initemps, steps_for_step=10, J=-1, v=0):
     tot_results = []
 
     for it, t in enumerate(temps):
         print(f"Computing t = {t:.2f} with {steps_for_step*(it+1)} steps")
         circuit = Circuit(
             [
-                To1()(qubits[0]),
+                To3()(qubits[0]),
                 To3()(qubits[1]),
                 step(
                     qubits[0], qubits[1], t=t, J=J, v=v, reps=steps_for_step * (it + 1)
@@ -328,9 +350,92 @@ qubits
 # +
 circuit = Circuit(
     [
-        To1()(qubits[0]),
-        To3()(qubits[1]),
+        X_ij(0, 1)(qubits[0]),
+        X_ij(0, 3)(qubits[1]),
         step(qubits[0], qubits[1], 4 / 5, 5, 0, 2),
+        measure(qubits[0], key="q0"),
+        measure(qubits[1], key="q1"),
+    ]
+)
+print(circuit)
+
+result = sample(circuit, repetitions=50)
+
+my_res = Result(result)
+
+print("\n")
+print(result)
+
+# +
+tau = 0.5
+
+
+circuit = Circuit(
+    [
+        # set qudit 0 to |1> (down spin)
+        X_P_ij(0, 1)(qubits[0]),
+        # set qudit 1 to |3> (mixed state)
+        X_P_ij(0, 3)(qubits[1]),
+        # U_1
+        UCSUM()(qubits[0], qubits[1]),
+        X_P_ij(0, 2, tau)(qubits[0]),
+        X_P_ij(1, 3, -tau)(qubits[0]),
+        UCSUMDag()(qubits[0], qubits[1]),
+        # U_2
+        Z_P_ij(0, 2, np.pi / 2)(qubits[0]),
+        Z_P_ij(0, 2, np.pi / 2)(qubits[1]),
+        Z_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+        Z_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+        UCSUM()(qubits[0], qubits[1]),
+        X_P_ij(0, 2, tau)(qubits[0]),
+        X_P_ij(1, 3, -tau)(qubits[0]),
+        UCSUMDag()(qubits[0], qubits[1]),
+        Z_P_ij(1, 3, np.pi / 2)(qubits[0]),
+        Z_P_ij(1, 3, np.pi / 2)(qubits[1]),
+        Z_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+        Z_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+        # U_3
+        Y_P_ij(0, 1, np.pi / 2)(qubits[0]),
+        Y_P_ij(0, 1, -np.pi / 2)(qubits[1]),
+        Y_P_ij(2, 3, -np.pi / 2)(qubits[0]),
+        Y_P_ij(2, 3, -np.pi / 2)(qubits[1]),
+        X_P_ij(0, 2, np.pi / 2)(qubits[0]),
+        X_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+        X_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+        X_P_ij(1, 3, np.pi / 2)(qubits[1]),
+        UCSUM()(qubits[0], qubits[1]),
+        Y_P_ij(0, 2, -tau)(qubits[0]),
+        Y_P_ij(1, 3, -tau)(qubits[0]),
+        UCSUMDag()(qubits[0], qubits[1]),
+        X_P_ij(1, 3, np.pi / 2)(qubits[0]),
+        X_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+        X_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+        X_P_ij(0, 2, np.pi / 2)(qubits[1]),
+        Y_P_ij(2, 3, np.pi / 2)(qubits[0]),
+        Y_P_ij(2, 3, np.pi / 2)(qubits[1]),
+        Y_P_ij(0, 1, -np.pi / 2)(qubits[0]),
+        Y_P_ij(0, 1, np.pi / 2)(qubits[1]),
+        # U_4
+        X_P_ij(0, 1, -np.pi / 2)(qubits[0]),
+        X_P_ij(0, 1, np.pi / 2)(qubits[1]),
+        X_P_ij(2, 3, np.pi / 2)(qubits[0]),
+        X_P_ij(2, 3, np.pi / 2)(qubits[1]),
+        Y_P_ij(0, 2, np.pi / 2)(qubits[0]),
+        Y_P_ij(0, 2, np.pi / 2)(qubits[1]),
+        Y_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+        Y_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+        UCSUM()(qubits[0], qubits[1]),
+        X_P_ij(0, 2, -tau)(qubits[0]),
+        X_P_ij(1, 3, -tau)(qubits[0]),
+        UCSUMDag()(qubits[0], qubits[1]),
+        Y_P_ij(1, 3, np.pi / 2)(qubits[0]),
+        Y_P_ij(1, 3, np.pi / 2)(qubits[1]),
+        Y_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+        Y_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+        X_P_ij(2, 3, -np.pi / 2)(qubits[0]),
+        X_P_ij(2, 3, -np.pi / 2)(qubits[1]),
+        X_P_ij(0, 1, np.pi / 2)(qubits[0]),
+        X_P_ij(0, 1, -np.pi / 2)(qubits[1]),
         measure(qubits[0], key="q0"),
         measure(qubits[1], key="q1"),
     ]
@@ -350,11 +455,150 @@ print(result)
 # Evolution starting with state (13) that represents a node in up and a node half-filled
 
 # +
-J = 1
+J = -1
 v = 1
 
-t = np.arange(0, 2 * J, J / 2)
+t = np.arange(0, 2, 1 / 2)
 results = evolve(t, steps_for_step=10, J=J, v=v)
+
+# +
+tot_up0 = [
+    (res.probabilities["q0"][1] + res.probabilities["q0"][3] / 2) for res in results
+]
+tot_up1 = [
+    (res.probabilities["q1"][1] + res.probabilities["q1"][3] / 2) for res in results
+]
+
+tot_down0 = [
+    (res.probabilities["q0"][2] + res.probabilities["q0"][3] / 2) for res in results
+]
+tot_down1 = [
+    (res.probabilities["q1"][2] + res.probabilities["q1"][3] / 2) for res in results
+]
+1
+plt.plot(t, tot_up0, "o-", label="N(0)up")
+plt.plot(t, tot_down0, "o-", label="N(0)down")
+
+plt.plot(t, tot_up1, "^--", label="N(1)up")
+plt.plot(t, tot_down1, "^--", label="N(1)down")
+
+plt.legend()
+
+plt.savefig("plots/2ququart.pdf")
+# -
+
+
+# # Implementation 2
+
+
+# +
+def step(qubit0, qubit1, t, J, v, reps):
+    def single(squbit0, squbit1, tau, sJ, sv):
+        return [
+            # U_1
+            UCSUM()(qubits[0], qubits[1]),
+            X_P_ij(0, 2, tau)(qubits[0]),
+            X_P_ij(1, 3, -tau)(qubits[0]),
+            UCSUMDag()(qubits[0], qubits[1]),
+            # U_2
+            Z_P_ij(0, 2, np.pi / 2)(qubits[0]),
+            Z_P_ij(0, 2, np.pi / 2)(qubits[1]),
+            Z_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+            Z_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+            UCSUM()(qubits[0], qubits[1]),
+            X_P_ij(0, 2, tau)(qubits[0]),
+            X_P_ij(1, 3, -tau)(qubits[0]),
+            UCSUMDag()(qubits[0], qubits[1]),
+            Z_P_ij(1, 3, np.pi / 2)(qubits[0]),
+            Z_P_ij(1, 3, np.pi / 2)(qubits[1]),
+            Z_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+            Z_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+            # U_3
+            Y_P_ij(0, 1, np.pi / 2)(qubits[0]),
+            Y_P_ij(0, 1, -np.pi / 2)(qubits[1]),
+            Y_P_ij(2, 3, -np.pi / 2)(qubits[0]),
+            Y_P_ij(2, 3, -np.pi / 2)(qubits[1]),
+            X_P_ij(0, 2, np.pi / 2)(qubits[0]),
+            X_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+            X_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+            X_P_ij(1, 3, np.pi / 2)(qubits[1]),
+            UCSUM()(qubits[0], qubits[1]),
+            Y_P_ij(0, 2, -tau)(qubits[0]),
+            Y_P_ij(1, 3, -tau)(qubits[0]),
+            UCSUMDag()(qubits[0], qubits[1]),
+            X_P_ij(1, 3, np.pi / 2)(qubits[0]),
+            X_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+            X_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+            X_P_ij(0, 2, np.pi / 2)(qubits[1]),
+            Y_P_ij(2, 3, np.pi / 2)(qubits[0]),
+            Y_P_ij(2, 3, np.pi / 2)(qubits[1]),
+            Y_P_ij(0, 1, -np.pi / 2)(qubits[0]),
+            Y_P_ij(0, 1, np.pi / 2)(qubits[1]),
+            # U_4
+            X_P_ij(0, 1, -np.pi / 2)(qubits[0]),
+            X_P_ij(0, 1, np.pi / 2)(qubits[1]),
+            X_P_ij(2, 3, np.pi / 2)(qubits[0]),
+            X_P_ij(2, 3, np.pi / 2)(qubits[1]),
+            Y_P_ij(0, 2, np.pi / 2)(qubits[0]),
+            Y_P_ij(0, 2, np.pi / 2)(qubits[1]),
+            Y_P_ij(1, 3, -np.pi / 2)(qubits[0]),
+            Y_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+            UCSUM()(qubits[0], qubits[1]),
+            X_P_ij(0, 2, -tau)(qubits[0]),
+            X_P_ij(1, 3, -tau)(qubits[0]),
+            UCSUMDag()(qubits[0], qubits[1]),
+            Y_P_ij(1, 3, np.pi / 2)(qubits[0]),
+            Y_P_ij(1, 3, np.pi / 2)(qubits[1]),
+            Y_P_ij(0, 2, -np.pi / 2)(qubits[0]),
+            Y_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+            X_P_ij(2, 3, -np.pi / 2)(qubits[0]),
+            X_P_ij(2, 3, -np.pi / 2)(qubits[1]),
+            X_P_ij(0, 1, np.pi / 2)(qubits[0]),
+            X_P_ij(0, 1, -np.pi / 2)(qubits[1]),
+        ]
+
+    t = t / reps
+
+    a = []
+    for el in range(reps):
+        a += single(qubit0, qubit1, t, J, v)
+    return a
+
+
+def evolve(initial, temps, steps_for_step=10, J=-1, v=0):
+    tot_results = []
+
+    for it, t in enumerate(temps):
+        print(f"Computing t = {t:.2f} with {steps_for_step*(it+1)} steps")
+        circuit = Circuit(
+            [
+                *initial,
+                step(
+                    qubits[0], qubits[1], t=t, J=J, v=v, reps=steps_for_step * (it + 1)
+                ),
+                measure(qubits[0], key="q0"),
+                measure(qubits[1], key="q1"),
+            ]
+        )
+
+        result = Result(sample(circuit, repetitions=50))
+        tot_results.append(result)
+    return tot_results
+
+
+# +
+J = -1
+v = 1
+
+t = np.arange(0, 5, 1 / 2)
+
+initial = [
+    # set qudit 0 to |1> (down spin)
+    X_P_ij(0, 1)(qubits[0]),
+    # set qudit 1 to |3> (mixed state)
+    X_P_ij(0, 3)(qubits[1]),
+]
+results = evolve(initial, t, steps_for_step=10, J=J, v=v)
 
 # +
 tot_up0 = [
