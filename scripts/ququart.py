@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cirq import Circuit, Gate, LineQid, measure, sample
 from primitives import *
+from sympy import exp
 
 # %% [markdown]
 # ## Helpers
@@ -52,6 +53,7 @@ class Result:
 # %%
 def step(qubit0, qubit1, t, J, v, reps):
     def single(squbit0, squbit1, tau, sJ, sv):
+        tau = tau * sJ
         return [
             # U_1
             UCSUM()(qubits[0], qubits[1]),
@@ -75,8 +77,8 @@ def step(qubit0, qubit1, t, J, v, reps):
             Y_P_ij(0, 2, np.pi)(qubits[0]),
             Z_P_ij(1, 3, np.pi / 2)(qubits[0]),
             Z_P_ij(0, 2, -np.pi / 2)(qubits[0]),
-            Z_P_ij(0, 2, -np.pi / 2)(qubits[1]),
             Z_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+            Z_P_ij(0, 2, -np.pi / 2)(qubits[1]),
             # U_3
             Y_P_ij(0, 1, np.pi / 2)(qubits[0]),
             Y_P_ij(2, 3, -np.pi / 2)(qubits[0]),
@@ -337,3 +339,5 @@ plt.plot(t, tot_up1, "^--", label="N(1)up")
 plt.plot(t, tot_down1, "^--", label="N(1)down")
 
 plt.legend()
+
+# %%
