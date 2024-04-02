@@ -92,8 +92,8 @@ def step(qubit0, qubit1, t, J, v, reps):
             X_P_ij(1, 3, -np.pi / 2)(qubits[0]),
             Y_P_ij(0, 1, -np.pi / 2)(qubits[1]),
             Y_P_ij(2, 3, -np.pi / 2)(qubits[1]),
-            X_P_ij(0, 2, -np.pi / 2)(qubits[1]),
-            X_P_ij(1, 3, np.pi / 2)(qubits[1]),
+            Y_P_ij(0, 2, -np.pi / 2)(qubits[1]),
+            Y_P_ij(1, 3, np.pi / 2)(qubits[1]),
             UCSUM()(qubits[0], qubits[1]),
             Y_P_ij(0, 2, -tau)(qubits[0]),
             Y_P_ij(1, 3, -tau)(qubits[0]),
@@ -105,8 +105,8 @@ def step(qubit0, qubit1, t, J, v, reps):
             X_P_ij(0, 2, -np.pi / 2)(qubits[0]),
             Y_P_ij(2, 3, np.pi / 2)(qubits[0]),
             Y_P_ij(0, 1, -np.pi / 2)(qubits[0]),
-            X_P_ij(1, 3, -np.pi / 2)(qubits[1]),
-            X_P_ij(0, 2, np.pi / 2)(qubits[1]),
+            Y_P_ij(1, 3, -np.pi / 2)(qubits[1]),
+            Y_P_ij(0, 2, np.pi / 2)(qubits[1]),
             Y_P_ij(2, 3, np.pi / 2)(qubits[1]),
             Y_P_ij(0, 1, np.pi / 2)(qubits[1]),
             # U_4
@@ -168,7 +168,7 @@ def evolve(initial, temps, steps_for_step=10, J=-1, v=0):
 J = -1
 v = 0
 
-t = np.arange(0, 2, 1 / 2)
+t = np.arange(0, 5, 1 / 2)
 
 initial = [
     # set qudit 0 to |1> (up spin)
@@ -334,7 +334,8 @@ tot_down0 = [
 tot_down1 = [
     (res.probabilities["q1"][2] + res.probabilities["q1"][3] / 2) for res in results
 ]
-1
+
+# %%
 plt.plot(t, tot_up0, "o-", label="N(0)up")
 plt.plot(t, tot_down0, "o-", label="N(0)down")
 
@@ -342,5 +343,7 @@ plt.plot(t, tot_up1, "^--", label="N(1)up")
 plt.plot(t, tot_down1, "^--", label="N(1)down")
 
 plt.legend()
+
+plt.savefig("plots/2ququart.pdf")
 
 # %%
