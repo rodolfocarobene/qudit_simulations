@@ -46,6 +46,12 @@ class Result:
             self.probabilities[key] = prob_key
 
 
+# %%
+N = 2  # number of sites
+
+qubits = LineQid.range(N, dimension=4)
+qubits
+
 # %% [markdown]
 # ## Manual implementation
 
@@ -159,11 +165,6 @@ def evolve(initial, temps, steps_for_step=10, J=-1, v=0):
 
 
 # %%
-N = 2  # number of sites
-
-qubits = LineQid.range(N, dimension=4)
-qubits
-
 J = -1
 v = 0
 
@@ -206,6 +207,8 @@ plt.legend()
 
 
 # %%
+
+
 class Hint(Gate):
     def __init__(self, v=1, t=0.1):
         self.v = v
@@ -221,7 +224,7 @@ class Hint(Gate):
                 -1j
                 * self.t
                 * (
-                    4 * self.v * eye(4)
+                    4 * self.v * np.eye(4)
                     - 1j * sy_gamma_1 * sy_gamma_2
                     - 1j * sy_gamma_3 * sy_gamma_4
                     + sy_gamma_5
