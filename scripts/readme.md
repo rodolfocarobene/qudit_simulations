@@ -2,23 +2,30 @@ Description generated with GPT :-)
 
 ## Files Description:
 
-### 1. `qiskit_evolve.py`
+### 1. `primitives.py`
+
+Collection of gates and matrices required for ququart simulations (not a
+notebook).
+
+### 2. `qiskit_evolve.py`
 
 This Python script demonstrates the simulation of Fermi-Hubbard evolution using
-Qiskit. It includes:
+Qiskit.
 
-- Implementation of the Fermi-Hubbard model evolution using Qiskit.
-- Visualization of evolution dynamics using matplotlib.
-- Example usage showcasing the evolution process.
-
-### 2. `ququart.py`
+### 3. `ququart.py`
 
 This Python script showcases Ququart simulation using Cirq. It includes:
 
-- Definition of primitives and gates for ququart simulation using Cirq.
-- Implementation of evolution dynamics for ququart system.
-- Visualization of evolution dynamics using matplotlib.
-- Example usage demonstrating the evolution process.
+- Implementation of evolution dynamics for ququart system using decomposed
+  (through OSD) gates.
+- Implementation of evolution dynamics for ququart system using exponential of
+  gamma matrices.
+
+### 3. `comparison_OSD.py`
+
+Comparison between evolution operators composed from exponential gamma matrices
+("exact") and decomposed gates. Since the decomposition is not exact this could
+explain some differences.
 
 ## General Information:
 
