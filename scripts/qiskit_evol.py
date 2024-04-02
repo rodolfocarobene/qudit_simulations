@@ -108,7 +108,7 @@ Statevector(evolved_state).probabilities_dict()
 
 # %%
 J = -1
-v = 1
+v = 0
 
 t = np.arange(0, 5, 1 / 2)
 results = evolve(t, steps_for_step=10, J=J, v=v)
@@ -160,6 +160,6 @@ plt.plot(t, tot_down1, "^--", label="N(1)down")
 
 plt.legend()
 
-plt.savefig("plots/4qubits.pdf")
+# plt.savefig("plots/4qubits.pdf")
 
 # %%
