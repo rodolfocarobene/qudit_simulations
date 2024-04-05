@@ -45,14 +45,10 @@ def evolve(temps, steps_for_step=10, J=1, v=0):
     tot_results = []
 
     for it, t in enumerate(temps):
-        print(f"Computing t = {t:.2f} with {steps_for_step*(it+1)} steps")
+        print(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
 
         mapper = JordanWignerMapper()
         ham = mapper.map(fhm.second_q_op())
-
-        evol_gate = PauliEvolutionGate(
-            ham, time=t, synthesis=SuzukiTrotter(reps=steps_for_step * (it + 1))
-        )
 
         evolved_state = QuantumCircuit(num_nodes * 2)
 
@@ -60,7 +56,13 @@ def evolve(temps, steps_for_step=10, J=1, v=0):
         evolved_state.x(2)  # and second half-filled
         evolved_state.x(3)
 
-        evolved_state.append(evol_gate, range(num_nodes * 2))
+        if it > 0:
+            evol_gate = PauliEvolutionGate(
+                ham, time=t, synthesis=SuzukiTrotter(reps=steps_for_step * (it))
+            )
+            evolved_state.append(evol_gate, range(num_nodes * 2))
+
+        print(f"Len: {evolved_state.decompose().decompose().decompose().depth()}")
 
         result = Statevector(evolved_state).probabilities_dict()
         tot_results.append(result)
@@ -112,9 +114,6 @@ v = 0
 
 t = np.arange(0, 5, 1 / 2)
 results = evolve(t, steps_for_step=10, J=J, v=v)
-
-# %%
-results[0]
 
 # %%
 tot_up0 = []
