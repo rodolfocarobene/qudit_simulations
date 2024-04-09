@@ -24,7 +24,11 @@ from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import Statevector
 from qiskit.synthesis import SuzukiTrotter
 from qiskit_nature.second_q.hamiltonians import FermiHubbardModel
-from qiskit_nature.second_q.hamiltonians.lattices import BoundaryCondition, LineLattice
+from qiskit_nature.second_q.hamiltonians.lattices import (
+    BoundaryCondition,
+    LineLattice,
+    SquareLattice,
+)
 from qiskit_nature.second_q.mappers import JordanWignerMapper
 
 # %% [markdown]
@@ -32,133 +36,111 @@ from qiskit_nature.second_q.mappers import JordanWignerMapper
 
 
 # %%
-def evolve(temps, steps_for_step=10, J=1, v=0):
+class QubitResult:
+    def __init__(self, res):
 
-    fhm = FermiHubbardModel(
-        line_lattice.uniform_parameters(
-            uniform_interaction=J,
-            uniform_onsite_potential=0.0,
-        ),
-        onsite_interaction=v,
-    )
+        self.sites = {}
 
-    tot_results = []
+        num_qubits = len(list(res)[0]) // 2
 
-    for it, t in enumerate(temps):
-        print(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
+        for qubit in range(num_qubits):
+            up = 0
+            down = 0
+            void = 0
 
-        mapper = JordanWignerMapper()
-        ham = mapper.map(fhm.second_q_op())
+            for key in res:
+                upidx = -1 - 2 * qubit
+                downidx = -2 - 2 * qubit
+                up_or_down = False
+                if key[upidx] == "1":
+                    up += res[key]
+                    up_or_down = True
+                if key[downidx] == "1":
+                    up_or_down = True
+                    down += res[key]
+                if up_or_down is False:
+                    void += res[key]
 
-        evolved_state = QuantumCircuit(num_nodes * 2)
+            self.sites[qubit] = up / (up + down + void)
 
-        evolved_state.x(0)  # set first node as up
-        evolved_state.x(2)  # and second half-filled
-        evolved_state.x(3)
 
-        if it > 0:
-            evol_gate = PauliEvolutionGate(
-                ham, time=t, synthesis=SuzukiTrotter(reps=steps_for_step * (it))
-            )
-            evolved_state.append(evol_gate, range(num_nodes * 2))
+# %%
+class QubitFermiHubbard:
+    def __init__(self, L=1, M=2):
+        """Initialize qudit system, L x M."""
+        self.rows = L
+        self.columns = M
 
-        print(f"Len: {evolved_state.decompose().decompose().decompose().depth()}")
+        boundary_condition = BoundaryCondition.OPEN
+        if L == 1:
+            self.lattice = LineLattice(L * M, boundary_condition=boundary_condition)
+        else:
+            self.lattice = SquareLattice(M, L, boundary_condition=boundary_condition)
+        self.tot_results = []
 
-        result = Statevector(evolved_state).probabilities_dict()
-        tot_results.append(result)
-    return tot_results
+    def evolve(self, initial, temps, steps_for_step=10, J=1, v=0):
+
+        self.t = temps
+
+        fhm = FermiHubbardModel(
+            self.lattice.uniform_parameters(
+                uniform_interaction=J,
+                uniform_onsite_potential=v,
+            ),
+            onsite_interaction=v,
+        )
+        self.tot_results = []
+        for it, t in enumerate(temps):
+            print(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
+
+            mapper = JordanWignerMapper()
+            ham = mapper.map(fhm.second_q_op())
+
+            evolved_state = QuantumCircuit(self.rows * self.columns * 2)
+
+            for idx, init in enumerate(initial):
+                if init == "1":
+                    evolved_state.x(idx)
+
+            if it > 0:
+                evol_gate = PauliEvolutionGate(
+                    ham, time=t, synthesis=SuzukiTrotter(reps=steps_for_step * (it))
+                )
+                evolved_state.append(evol_gate, range(self.rows * self.columns * 2))
+
+            print(f"Len: {evolved_state.decompose().decompose().decompose().depth()}")
+
+            result = Statevector(evolved_state).probabilities_dict()
+            self.tot_results.append(QubitResult(result))
+
+    def plot(self, sites=None):
+        results = self.tot_results
+        t = self.t
+
+        if sites is None:
+            sites = results[0].sites
+
+        for site in sites:
+            tot_site = [res.sites[site] for res in results]
+            plt.plot(t, tot_site, "o-", label=f"N({site}) up")
+        plt.legend()
 
 
 # %% [markdown]
 # ### Example
 
 # %%
-num_nodes = 2
-
-boundary_condition = BoundaryCondition.OPEN
-line_lattice = LineLattice(num_nodes=num_nodes, boundary_condition=boundary_condition)
-line_lattice.draw()
-
-# %%
-t = -1.0  # the interaction parameter
-v = 1.0  # the onsite potential
-u = 0.0  # the interaction parameter U
-
-fhm = FermiHubbardModel(
-    line_lattice.uniform_parameters(
-        uniform_interaction=t,
-        uniform_onsite_potential=v,
-    ),
-    onsite_interaction=u,
-)
-
-mapper = JordanWignerMapper()
-ham = mapper.map(fhm.second_q_op())
-
-evol_gate = PauliEvolutionGate(ham, time=1.5, synthesis=SuzukiTrotter(reps=40))
-
-evolved_state = QuantumCircuit(num_nodes * 2)
-evolved_state.x(0)
-evolved_state.x(2)
-evolved_state.append(evol_gate, range(num_nodes * 2))
-
-# %%
-Statevector(evolved_state).probabilities_dict()
-
-# %% [markdown]
-# ### Evolution
+qfh = QubitFermiHubbard(1, 4)
+qfh.lattice.draw()
 
 # %%
 J = -1
 v = 0
 
-t = np.arange(0, 5, 1 / 2)
-results = evolve(t, steps_for_step=10, J=J, v=v)
+t = np.arange(0, 3, 1 / 2)
 
-# %%
-tot_up0 = []
-tot_up1 = []
-tot_down0 = []
-tot_down1 = []
+qfh.evolve("10011100", t, steps_for_step=10, J=J, v=v)
 
-for res in results:
-    up0 = 0
-    down0 = 0
-    up1 = 0
-    down1 = 0
-
-    void0 = 0
-    void1 = 0
-
-    for key in res:
-        if key[3] == "1":
-            up0 += res[key]
-        if key[2] == "1":
-            down0 += res[key]
-        if key[3] != "1" and key[2] != "1":
-            void0 += res[key]
-
-        if key[1] == "1":
-            up1 += res[key]
-        if key[0] == "1":
-            down1 += res[key]
-        if key[1] != "1" and key[0] != "1":
-            void1 += res[key]
-
-    tot_up0.append(up0 / (up0 + down0 + void0))
-    tot_down0.append(down0 / (up0 + down0 + void0))
-    tot_up1.append(up1 / (up1 + down1 + void1))
-    tot_down1.append(down1 / (up1 + down1 + void1))
-
-# %%
-plt.plot(t, tot_up0, "o-", label="N(0)up")
-plt.plot(t, tot_down0, "o-", label="N(0)down")
-
-plt.plot(t, tot_up1, "^--", label="N(1)up")
-plt.plot(t, tot_down1, "^--", label="N(1)down")
-
-plt.legend()
-
-# plt.savefig("plots/4qubits.pdf")
+qfh.plot()
 
 # %%
