@@ -1,5 +1,3 @@
-Description generated with GPT :-)
-
 ## Files Description:
 
 ### 1. `primitives.py`
@@ -18,14 +16,6 @@ This Python script showcases Ququart simulation using Cirq. It includes:
 
 - Implementation of evolution dynamics for ququart system using decomposed
   (through OSD) gates.
-- Implementation of evolution dynamics for ququart system using exponential of
-  gamma matrices.
-
-### 3. `comparison_OSD.py`
-
-Comparison between evolution operators composed from exponential gamma matrices
-("exact") and decomposed gates. Since the decomposition is not exact this could
-explain some differences.
 
 ## General Information:
 
