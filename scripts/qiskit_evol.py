@@ -19,6 +19,7 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
+from logger import log
 from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.library import PauliEvolutionGate
 from qiskit.quantum_info import Statevector
@@ -26,6 +27,7 @@ from qiskit.synthesis import SuzukiTrotter
 from qiskit_nature.second_q.hamiltonians import FermiHubbardModel
 from qiskit_nature.second_q.hamiltonians.lattices import (
     BoundaryCondition,
+    LatticeDrawStyle,
     LineLattice,
     SquareLattice,
 )
@@ -91,7 +93,7 @@ class QubitFermiHubbard:
         )
         self.tot_results = []
         for it, t in enumerate(temps):
-            print(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
+            log.info(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
 
             mapper = JordanWignerMapper()
             ham = mapper.map(fhm.second_q_op())
@@ -108,7 +110,9 @@ class QubitFermiHubbard:
                 )
                 evolved_state.append(evol_gate, range(self.rows * self.columns * 2))
 
-            print(f"Len: {evolved_state.decompose().decompose().decompose().depth()}")
+            log.info(
+                f"Len: {evolved_state.decompose().decompose().decompose().depth()}"
+            )
 
             result = Statevector(evolved_state).probabilities_dict()
             self.tot_results.append(QubitResult(result))
@@ -130,8 +134,8 @@ class QubitFermiHubbard:
 # ### Example
 
 # %%
-qfh = QubitFermiHubbard(1, 4)
-qfh.lattice.draw()
+qfh = QubitFermiHubbard(2, 2)
+qfh.lattice.draw(style=LatticeDrawStyle(with_labels=True))
 
 # %%
 J = -1
@@ -139,7 +143,7 @@ v = 0
 
 t = np.arange(0, 3, 1 / 2)
 
-qfh.evolve("10011100", t, steps_for_step=10, J=J, v=v)
+qfh.evolve("10110100", t, steps_for_step=10, J=J, v=v)
 
 qfh.plot()
 

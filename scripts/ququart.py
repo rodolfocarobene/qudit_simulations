@@ -20,6 +20,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from cirq import Circuit, LineQid, measure, sample
+from logger import log
 from primitives import *
 
 # %% [markdown]
@@ -58,6 +59,9 @@ class QuditFermiHubbard:
         self.rows = L
         self.columns = M
 
+        if L > 1 and M > 1:
+            raise NotImplementedError("This qudit simulation only support 1D chains")
+
         self.qubits = LineQid.range(L * M, dimension=4)
         self.tot_results = []
 
@@ -66,9 +70,9 @@ class QuditFermiHubbard:
         for row in range(self.rows):
             for col in range(self.columns):
                 if row % 2 == 0:
-                    final_str += f" {row * self.columns + (col+1):2d} "
+                    final_str += f"{row * self.columns + (col+1)} "
                 else:
-                    final_str += f" {(row+1) * self.columns - (col):2d} "
+                    final_str += f"{(row+1) * self.columns - (col)} "
             final_str += "\n"
         return final_str
 
@@ -174,7 +178,7 @@ class QuditFermiHubbard:
         self.t = temps
 
         for it, t in enumerate(temps):
-            print(f"Computing t = {t:.2f} with {steps_for_step*it} steps")
+            log.info(f"Computing t = {t:.2f} with {steps_for_step*it} steps")
 
             evolution_circuit = []
 
@@ -208,7 +212,7 @@ class QuditFermiHubbard:
                 measures.append(measure(qubit, key=f"q{idx}"))
 
             circuit = Circuit([*initial, *evolution_circuit, *measures])
-            print(f"Len: {len(circuit)}")
+            log.info(f"Len: {len(circuit)}")
 
             result = QuditResult(sample(circuit, repetitions=100))
             self.tot_results.append((t, result))
@@ -226,9 +230,10 @@ class QuditFermiHubbard:
 
 
 # %%
-qfh = QuditFermiHubbard(1, 4)
-print("Studied lattice: \n", qfh)
+qfh = QuditFermiHubbard(1, 2)
+print(f"Studied lattice: \n{qfh}")
 
+# %%
 J = -1
 v = 0
 
@@ -236,8 +241,8 @@ t = np.arange(0, 3, 1 / 2)
 
 initial = [
     X_P_ij(0, 1)(qfh.qubits[0]),
-    X_P_ij(0, 2)(qfh.qubits[1]),
-    X_P_ij(0, 3)(qfh.qubits[2]),
+    X_P_ij(0, 3)(qfh.qubits[1]),
+    # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
