@@ -141,10 +141,11 @@ qfh.lattice.draw(style=LatticeDrawStyle(with_labels=True))
 J = -1
 v = 0
 
-t = np.arange(0, 3, 1 / 2)
+t = np.arange(0, 2, 1 / 2)
 
-qfh.evolve("10110100", t, steps_for_step=10, J=J, v=v)
+qfh.evolve("10000000", t, steps_for_step=10, J=J, v=v)
 
 qfh.plot()
 
-# %%
+# %% [markdown]
+#
