@@ -20,10 +20,12 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
-from cirq import Circuit, LineQid, measure, sample
+from cirq import Circuit, LineQid, Simulator, measure, sample
 from logger import log
 from primitives import *
 from scipy.linalg import expm
+
+simulator = Simulator()
 
 # %% [markdown]
 # ## Helpers
@@ -138,7 +140,33 @@ class NotNearHop(Gate):
 
 # %%
 class QuditResult:
-    def __init__(self, res):
+    def __init__(self, res, exact=True):
+        if exact:
+            self.init_exact(res)
+        else:
+            self.init_shots(res)
+
+    def init_exact(self, res):
+
+        self.sites = {}
+
+        s = np.abs(res.final_state_vector)
+        s = s * s / np.sum(s * s)
+
+        shape = tuple([4] * len(res.qubit_map))
+        s = s.reshape(shape)
+
+        for idx, qubit in enumerate(res.qubit_map):
+            index = [slice(None)] * s.ndim
+            index[idx] = 1
+            sum_1 = np.sum(s[tuple(index)])
+            index = [slice(None)] * s.ndim
+            index[idx] = 3
+            sum_3 = np.sum(s[tuple(index)])
+            self.sites[idx] = sum_1 + sum_3 / 2
+
+    def init_shots(self, res):
+
         self.probabilities = {}
 
         for key in res.measurements:
@@ -200,8 +228,15 @@ class QuditFermiHubbard:
         return NotNearHop(J, t, number_of_gammas=len(args))(qubit0, qubit1, *args)
 
     def evolve(self, initial, temps, steps_for_step=10, J=-1, v=0, repetitions=1000):
+        exact = repetitions == 0
+        if exact:
+            if len(initial) != len(self.qubits):
+                log.error("In an exact simulation, all qubits must be initialized!")
+
         v = v / 4
-        # warning
+        log.warning(
+            "For some reason, v = v / 4 is a required correction. I applied it for you"
+        )
 
         self.tot_results = []
         self.t = temps
@@ -264,10 +299,16 @@ class QuditFermiHubbard:
             for idx, qubit in enumerate(self.qubits):
                 measures.append(measure(qubit, key=f"q{idx}"))
 
-            circuit = Circuit([*initial, *evolution_circuit, *measures])
-            log.info(f"Len: {len(circuit)}")
+            meas_circuit = Circuit([*initial, *evolution_circuit, *measures])
+            circuit = Circuit([*initial, *evolution_circuit])
+            # log.info(f"Len: {len(circuit)}")
 
-            result = QuditResult(sample(circuit, repetitions=repetitions))
+            if exact:
+                result = QuditResult(simulator.simulate(circuit), exact=exact)
+            else:
+                result = QuditResult(
+                    sample(meas_circuit, repetitions=repetitions), exact=exact
+                )
             self.tot_results.append((t, result))
 
     def plot(self, sites=None):
@@ -288,11 +329,33 @@ print(f"Studied lattice: \n{qfh}")
 
 # %% [markdown]
 # ### Example: single up fermion
+#
+# To perform an exact simulation one has to specify a full initial state and set the repetitions to zero.
+#
+# Tip: a "useless gate" can be constructed with X(0, 1, 0)
+
+# %%
+J = -1
+v = 0
+repetitions = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+initial = [
+    X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1, 0)(qfh.qubits[1]),
+    X_P_ij(0, 1, 0)(qfh.qubits[2]),
+    X_P_ij(0, 1, 0)(qfh.qubits[3]),
+]
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
+
+qfh.plot()
 
 # %%
 J = -1
 v = 0
 repetitions = 1000
+exact = False
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -315,7 +378,26 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
-repetitions = repetitions
+repetitions = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+initial = [
+    X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1, 0)(qfh.qubits[1]),
+    X_P_ij(0, 1)(qfh.qubits[2]),
+    X_P_ij(0, 1)(qfh.qubits[3]),
+]
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
+
+qfh.plot()
+
+# %%
+qfh = QuditFermiHubbard(2, 2)
+
+J = -1
+v = 0
+repetitions = 1000
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -338,16 +420,15 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
-repetitions = repetitions
+repetitions = 0
 
 t = np.arange(0, 2, 1 / 2)
 
 initial = [
     X_P_ij(0, 1)(qfh.qubits[0]),
     X_P_ij(0, 1)(qfh.qubits[1]),
-    # X_P_ij(0, 1)(qfh.qubits[3]),
-    # X_P_ij(0, 2)(qfh.qubits[2]),
-    # X_P_ij(0, 2)(qfh.qubits[1]),
+    X_P_ij(0, 1, 0)(qfh.qubits[2]),
+    X_P_ij(0, 1, 0)(qfh.qubits[3]),
 ]
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
@@ -361,17 +442,18 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
-repetitions = repetitions
+repetitions = 0
 
 t = np.arange(0, 2, 1 / 2)
 
 initial = [
     X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1, 0)(qfh.qubits[1]),
     X_P_ij(0, 1)(qfh.qubits[2]),
-    # X_P_ij(0, 1)(qfh.qubits[3]),
-    # X_P_ij(0, 2)(qfh.qubits[2]),
-    # X_P_ij(0, 2)(qfh.qubits[1]),
+    X_P_ij(0, 1, 0)(qfh.qubits[3]),
 ]
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
+
+# %%
