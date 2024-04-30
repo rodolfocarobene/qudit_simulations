@@ -91,12 +91,15 @@ class QubitFermiHubbard:
             ),
             onsite_interaction=v,
         )
+
         self.tot_results = []
         for it, t in enumerate(temps):
             log.info(f"Computing t = {t:.2f} with {steps_for_step*(it)} steps")
 
             mapper = JordanWignerMapper()
             ham = mapper.map(fhm.second_q_op())
+            # print(fhm.second_q_op())
+            # print(ham)
 
             evolved_state = QuantumCircuit(self.rows * self.columns * 2)
 
@@ -148,4 +151,62 @@ qfh.evolve("10000000", t, steps_for_step=10, J=J, v=v)
 qfh.plot()
 
 # %% [markdown]
-#
+# ### Example: single up fermion
+
+# %%
+qfh = QubitFermiHubbard(2, 2)
+qfh.lattice.draw(style=LatticeDrawStyle(with_labels=True))
+plt.show()
+
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+qfh.evolve("10000000", t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %% [markdown]
+# ### Example: 3 up fermions
+
+# %%
+qfh = QubitFermiHubbard(2, 2)
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+qfh.evolve("10101000", t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %% [markdown]
+# ### Example: 2 near up fermions
+
+# %%
+qfh = QubitFermiHubbard(2, 2)
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+qfh.evolve("00001010", t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %% [markdown]
+# ### Example: 2 not-near up fermions
+
+# %%
+qfh = QubitFermiHubbard(2, 2)
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+qfh.evolve("00101000", t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %%

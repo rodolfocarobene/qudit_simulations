@@ -95,14 +95,67 @@ class GammaHop(Gate):
         super()
 
     def _qid_shape_(self):
-        return (4,)
+        return (4, 4, 4, 4)
 
     def _unitary_(self):
-        b = exp(-1j * self.t * self.J / (2j) * Matrix(sy_gamma_5))
-        return np.array(b)
+        def myexp(a):
+            shape = a.shape
+            for indices in np.ndindex(shape):
+                a[indices] = np.exp(complex(a[indices]))
+            return a
+
+        a = np.array(
+            myexp(
+                -1j
+                * self.t
+                * (
+                    self.J
+                    / (2j)
+                    * (
+                        TensorProduct(
+                            TensorProduct(
+                                TensorProduct(
+                                    Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1
+                                ),
+                                sy_gamma_5,
+                            ),
+                            sy_gamma_5,
+                        )
+                        - TensorProduct(
+                            TensorProduct(
+                                TensorProduct(
+                                    Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2
+                                ),
+                                sy_gamma_5,
+                            ),
+                            sy_gamma_5,
+                        )
+                        + TensorProduct(
+                            TensorProduct(
+                                TensorProduct(
+                                    Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3
+                                ),
+                                sy_gamma_5,
+                            ),
+                            sy_gamma_5,
+                        )
+                        - TensorProduct(
+                            TensorProduct(
+                                TensorProduct(
+                                    Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4
+                                ),
+                                sy_gamma_5,
+                            ),
+                            sy_gamma_5,
+                        )
+                    )
+                )
+            )
+        )
+        return a.reshape(16, 16, 16, 16)
 
     def _circuit_diagram_info_(self, args):
-        return ["Hop(m)", "Hop(m+1)", "G5" "G5"]
+        return ["H", "H", "G5", "G5"]
 
 
 # %%
@@ -165,6 +218,10 @@ class QuditFermiHubbard:
         # print(f"Adding int gate for {qubit0} - {qubit1}")
         return Hhop(J, t)(qubit0, qubit1)
 
+    def step_hop_gammas(self, qubit0, qubit1, qubit2, qubit3, t, J):
+        # print(f"Adding int gate for {qubit0} - {qubit1}")
+        return Hhop_gammas(J, t)(qubit0, qubit1, qubit2, qubit3)
+
     def evolve(self, initial, temps, steps_for_step=10, J=-1, v=0):
         v = v / 4
         # warning
@@ -198,11 +255,14 @@ class QuditFermiHubbard:
                         )
                     # vertical hopping terms
                     evolution_circuit.append(
-                        self.step_hop(
-                            self.qubits[0],
-                            self.qubits[3],
+                        GammaHop(
                             t=tau,
                             J=J,
+                        )(
+                            self.qubits[0],
+                            self.qubits[3],
+                            self.qubits[1],
+                            self.qubits[2],
                         )
                     )
                     """
@@ -212,7 +272,6 @@ class QuditFermiHubbard:
                     evolution_circuit.append(
                         GammaHop(J, tau)(self.qubits[2])
                     )
-
                     evolution_circuit.append(
                         Hhop(J, tau)(self.qubits[0], self.qubits[3])
                     )
@@ -231,7 +290,7 @@ class QuditFermiHubbard:
             circuit = Circuit([*initial, *evolution_circuit, *measures])
             log.info(f"Len: {len(circuit)}")
 
-            result = QuditResult(sample(circuit, repetitions=100))
+            result = QuditResult(sample(circuit, repetitions=10))
             self.tot_results.append((t, result))
 
     def plot(self, sites=None):
@@ -250,6 +309,9 @@ class QuditFermiHubbard:
 qfh = QuditFermiHubbard(2, 2)
 print(f"Studied lattice: \n{qfh}")
 
+# %% [markdown]
+# ### Example: single up fermion
+
 # %%
 J = -1
 v = 0
@@ -257,7 +319,7 @@ v = 0
 t = np.arange(0, 2, 1 / 2)
 
 initial = [
-    X_P_ij(0, 1)(qfh.qubits[3]),
+    X_P_ij(0, 1)(qfh.qubits[0]),
     # X_P_ij(0, 1)(qfh.qubits[1]),
     # X_P_ij(0, 1)(qfh.qubits[3]),
     # X_P_ij(0, 2)(qfh.qubits[2]),
@@ -266,5 +328,299 @@ initial = [
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
 
 qfh.plot()
+
+# %% [markdown]
+# ### Example: 3 up fermions
+
+# %%
+qfh = QuditFermiHubbard(2, 2)
+
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+initial = [
+    X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1)(qfh.qubits[2]),
+    X_P_ij(0, 1)(qfh.qubits[3]),
+    # X_P_ij(0, 2)(qfh.qubits[2]),
+    # X_P_ij(0, 2)(qfh.qubits[1]),
+]
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %% [markdown]
+# ### Example: 2 near up fermions
+
+# %%
+qfh = QuditFermiHubbard(2, 2)
+
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+initial = [
+    X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1)(qfh.qubits[1]),
+    # X_P_ij(0, 1)(qfh.qubits[3]),
+    # X_P_ij(0, 2)(qfh.qubits[2]),
+    # X_P_ij(0, 2)(qfh.qubits[1]),
+]
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %% [markdown]
+# ### Example: 2 not-near up fermions
+
+# %%
+qfh = QuditFermiHubbard(2, 2)
+
+J = -1
+v = 0
+
+t = np.arange(0, 2, 1 / 2)
+
+initial = [
+    X_P_ij(0, 1)(qfh.qubits[0]),
+    X_P_ij(0, 1)(qfh.qubits[2]),
+    # X_P_ij(0, 1)(qfh.qubits[3]),
+    # X_P_ij(0, 2)(qfh.qubits[2]),
+    # X_P_ij(0, 2)(qfh.qubits[1]),
+]
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %%
+c
+
+# %%
+a = myexp(
+    -1j
+    * t
+    * (
+        J
+        / 2j
+        * (
+            np.tensordot(sy_gamma_2 * sy_gamma_5, sy_gamma_1, axes=0)
+            - np.tensordot(sy_gamma_1 * sy_gamma_5, sy_gamma_2, axes=0)
+            + np.tensordot(sy_gamma_4 * sy_gamma_5, sy_gamma_3, axes=0)
+            - np.tensordot(sy_gamma_3 * sy_gamma_5, sy_gamma_4, axes=0)
+        )
+    )
+)
+
+b = myexp(-1j * t * J / 2j * sy_gamma_5)
+c = np.tensordot(a, np.tensordot(b, b, axes=0), axes=0)
+
+# %%
+t = 1
+J = -1
+
+a = np.array(
+    myexp(
+        -1j
+        * t
+        * (
+            J
+            / (2j)
+            * (
+                TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                - TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                + TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                - TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+            )
+        )
+    )
+)
+
+# %%
+b = GammaHop()._unitary_().reshape(16, 16, 16, 16)
+
+# %%
+t = 0.1
+J = -1
+
+a = np.array(
+    myexp(
+        -1j
+        * t
+        * (
+            J
+            / (2j)
+            * (
+                TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                - TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                + TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+                - TensorProduct(
+                    TensorProduct(
+                        TensorProduct(Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4),
+                        sy_gamma_5,
+                    ),
+                    sy_gamma_5,
+                )
+            )
+        )
+    )
+)
+
+# %%
+a == b.reshape(256, 256)
+
+# %%
+a
+
+# %%
+b
+
+# %%
+k = (
+    -1j
+    * t
+    * (
+        J
+        / (2j)
+        * (
+            TensorProduct(
+                TensorProduct(
+                    TensorProduct(Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1),
+                    sy_gamma_5,
+                ),
+                sy_gamma_5,
+            )
+            - TensorProduct(
+                TensorProduct(
+                    TensorProduct(Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2),
+                    sy_gamma_5,
+                ),
+                sy_gamma_5,
+            )
+            + TensorProduct(
+                TensorProduct(
+                    TensorProduct(Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3),
+                    sy_gamma_5,
+                ),
+                sy_gamma_5,
+            )
+            - TensorProduct(
+                TensorProduct(
+                    TensorProduct(Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4),
+                    sy_gamma_5,
+                ),
+                sy_gamma_5,
+            )
+        )
+    )
+)
+
+
+# %%
+k = np.array(k)
+
+# %%
+expm(k.astype(np.complex128))
+
+# %%
+from scipy.linalg import expm
+
+t = 1
+J = -1
+
+
+def mycexp(s):
+    curr = 0
+    for i in range(1, 10):
+        L_curr = s
+        for j in range(i - 1):
+            L_curr = L_curr * s
+        curr += L_curr / np.math.factorial(i)
+    return curr
+
+
+m = np.array(
+    exp(
+        -1j
+        * t
+        * (
+            J
+            / (2j)
+            * (
+                TensorProduct(Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1)
+                - TensorProduct(Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2)
+                + TensorProduct(Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3)
+                - TensorProduct(Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4)
+            )
+        )
+    )
+)
+n = np.array(
+    mycexp(
+        -1j
+        * t
+        * (
+            J
+            / (2j)
+            * (
+                TensorProduct(Matrix(sy_gamma_2 * sy_gamma_5), sy_gamma_1)
+                - TensorProduct(Matrix(sy_gamma_1 * sy_gamma_5), sy_gamma_2)
+                + TensorProduct(Matrix(sy_gamma_4 * sy_gamma_5), sy_gamma_3)
+                - TensorProduct(Matrix(sy_gamma_3 * sy_gamma_5), sy_gamma_4)
+            )
+        )
+    )
+)
+m == n
+
+# %%
+m
+
+# %%
+n
 
 # %%
