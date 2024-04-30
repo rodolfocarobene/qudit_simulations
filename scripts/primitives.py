@@ -1,11 +1,11 @@
 import numpy as np
 from cirq import Gate
-from sympy import I, Matrix, Transpose
+from sympy import Matrix, Transpose
 from sympy.physics.quantum import TensorProduct
 
 # Pauli matrices (2x2)
 sx = Matrix([[0, 1], [1, 0]])
-sy = Matrix([[0, -I], [I, 0]])
+sy = Matrix([[0, -1j], [1j, 0]])
 sz = Matrix([[1, 0], [0, -1]])
 si = Matrix([[1, 0], [0, 1]])  # identity 2x2
 
