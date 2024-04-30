@@ -192,14 +192,14 @@ class QuditFermiHubbard:
         # print(f"Adding on-site gate for {qubit}")
         return Hint(v, t)(qubit)
 
-    def step_hop(self, qubit0, qubit1, t, J):
+    def step_hop(self, t, J, qubit0, qubit1):
         # print(f"Adding int gate for {qubit0} - {qubit1}")
         return Nearhop(J, t)(qubit0, qubit1)
 
     def step_hop_gammas(self, t, J, qubit0, qubit1, *args):
         return NotNearHop(J, t, number_of_gammas=len(args))(qubit0, qubit1, *args)
 
-    def evolve(self, initial, temps, steps_for_step=10, J=-1, v=0):
+    def evolve(self, initial, temps, steps_for_step=10, J=-1, v=0, repetitions=1000):
         v = v / 4
         # warning
 
@@ -224,23 +224,41 @@ class QuditFermiHubbard:
                     for idx in np.arange(0, self.rows * self.columns - 1):
                         evolution_circuit.append(
                             self.step_hop(
+                                tau,
+                                J,
                                 self.qubits[idx],
                                 self.qubits[idx + 1],
-                                t=tau,
-                                J=J,
                             )
                         )
                     # vertical hopping terms
-                    evolution_circuit.append(
-                        self.step_hop_gammas(
-                            tau,
-                            J,
-                            self.qubits[0],
-                            self.qubits[3],
-                            self.qubits[1],
-                            self.qubits[2],
-                        )
-                    )
+                    for idx in range(self.rows - 1):
+                        for jdx in range(self.columns):
+                            if not (
+                                (jdx == self.columns - 1 and idx % 2 == 0)
+                                or (jdx == 0 and idx % 2 == 1)
+                            ):
+
+                                if idx % 2 == 0:
+                                    first_index = self.columns * idx + jdx
+                                else:
+                                    first_index = (self.columns) * (idx + 1) - (jdx + 1)
+                                second_index = (
+                                    (idx + 1) * self.columns * 2 - 1 - first_index
+                                )
+
+                                intermediate = [
+                                    self.qubits[a]
+                                    for a in range(first_index + 1, second_index)
+                                ]
+                                evolution_circuit.append(
+                                    self.step_hop_gammas(
+                                        tau,
+                                        J,
+                                        self.qubits[first_index],
+                                        self.qubits[second_index],
+                                        *intermediate,
+                                    )
+                                )
 
             measures = []
             for idx, qubit in enumerate(self.qubits):
@@ -249,7 +267,7 @@ class QuditFermiHubbard:
             circuit = Circuit([*initial, *evolution_circuit, *measures])
             log.info(f"Len: {len(circuit)}")
 
-            result = QuditResult(sample(circuit, repetitions=1000))
+            result = QuditResult(sample(circuit, repetitions=repetitions))
             self.tot_results.append((t, result))
 
     def plot(self, sites=None):
@@ -274,6 +292,7 @@ print(f"Studied lattice: \n{qfh}")
 # %%
 J = -1
 v = 0
+repetitions = 1000
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -284,24 +303,7 @@ initial = [
     # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]
-qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
-
-qfh.plot()
-
-# %%
-J = -1
-v = 0
-
-t = np.arange(0, 2, 1 / 2)
-
-initial = [
-    X_P_ij(0, 1)(qfh.qubits[0]),
-    # X_P_ij(0, 1)(qfh.qubits[1]),
-    # X_P_ij(0, 1)(qfh.qubits[3]),
-    # X_P_ij(0, 2)(qfh.qubits[2]),
-    # X_P_ij(0, 2)(qfh.qubits[1]),
-]
-qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
 
@@ -313,6 +315,7 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
+repetitions = repetitions
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -323,7 +326,7 @@ initial = [
     # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]
-qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
 
@@ -335,6 +338,7 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
+repetitions = repetitions
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -345,7 +349,7 @@ initial = [
     # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]
-qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
 
@@ -357,6 +361,7 @@ qfh = QuditFermiHubbard(2, 2)
 
 J = -1
 v = 0
+repetitions = repetitions
 
 t = np.arange(0, 2, 1 / 2)
 
@@ -367,6 +372,6 @@ initial = [
     # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]
-qfh.evolve(initial, t, steps_for_step=10, J=J, v=v)
+qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
