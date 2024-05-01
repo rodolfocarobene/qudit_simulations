@@ -12,10 +12,15 @@ Qiskit.
 
 ### 3. `ququart.py`
 
-This Python script showcases Ququart simulation using Cirq. It includes:
+This Python script showcases Ququart simulation using Cirq. It includes an
+implementation of evolution dynamics for ququart system using decomposed
+(through OSD) gates.
 
-- Implementation of evolution dynamics for ququart system using decomposed
-  (through OSD) gates.
+### 4. `ququart_2D.py`
+
+This script implements a simulation of the Fermi-Hubbard model using IBM
+matrices. It supports 2D lattices and exact simulations as well as "shots"
+simulations
 
 ## General Information:
 
