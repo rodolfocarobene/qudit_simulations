@@ -221,18 +221,18 @@ class QuditFermiHubbard:
 
 
 # %%
-qfh = QuditFermiHubbard(1, 4)
+qfh = QuditFermiHubbard(1, 2)
 print(f"Studied lattice: \n{qfh}")
 
 # %%
 J = -1
 v = 0
 
-t = np.arange(0, 2, 1 / 2)
+t = np.arange(0, 5, 1 / 2)
 
 initial = [
     X_P_ij(0, 1)(qfh.qubits[0]),
-    X_P_ij(0, 1)(qfh.qubits[2]),
+    # X_P_ij(0, 1)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[2]),
     # X_P_ij(0, 2)(qfh.qubits[1]),
 ]

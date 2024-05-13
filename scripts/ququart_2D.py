@@ -354,17 +354,15 @@ qfh.plot()
 # %%
 J = -1
 v = 0
-repetitions = 1000
-exact = False
+repetitions = 0
 
 t = np.arange(0, 2, 1 / 2)
 
 initial = [
     X_P_ij(0, 1)(qfh.qubits[0]),
-    # X_P_ij(0, 1)(qfh.qubits[1]),
-    # X_P_ij(0, 1)(qfh.qubits[3]),
-    # X_P_ij(0, 2)(qfh.qubits[2]),
-    # X_P_ij(0, 2)(qfh.qubits[1]),
+    X_P_ij(0, 1, 0)(qfh.qubits[1]),
+    X_P_ij(0, 1, 0)(qfh.qubits[2]),
+    X_P_ij(0, 1, 0)(qfh.qubits[3]),
 ]
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
@@ -455,5 +453,21 @@ initial = [
 qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 
 qfh.plot()
+
+# %%
+
+# %%
+
+# %%
+a = (
+    TensorProduct(sy_gamma_2 * sy_gamma_5, sy_gamma_1)
+    - TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_2)
+    + TensorProduct(sy_gamma_4 * sy_gamma_5, sy_gamma_3)
+    - TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_4)
+)
+a
+
+# %%
+sy_gamma_2 * sy_gamma_5 == -sy_gamma_5 * sy_gamma_2
 
 # %%

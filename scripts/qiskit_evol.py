@@ -210,3 +210,19 @@ qfh.evolve("00101000", t, steps_for_step=10, J=J, v=v)
 qfh.plot()
 
 # %%
+
+# %%
+
+# %%
+qfh = QubitFermiHubbard(1, 2)
+# qfh.lattice.draw(style=LatticeDrawStyle(with_labels=True))
+J = -1
+v = 0
+
+t = np.arange(0, 5, 1 / 2)
+
+qfh.evolve("1000", t, steps_for_step=10, J=J, v=v)
+
+qfh.plot()
+
+# %%
