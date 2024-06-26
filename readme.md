@@ -5,14 +5,6 @@ the Fermi-Hubbard model.
 
 ## Installation instructions
 
-Using poetry:
-
 ```bash
 poetry install
-```
-
-Using pip:
-
-```bash
-pip install -e .
 ```
