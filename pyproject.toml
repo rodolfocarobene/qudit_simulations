@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Qudit simulations"
 authors = ["Rodolfo Carobene <rodolfo.carobene@gmail.com>"]
 license = "Apache 2.0"
-readme = "README.md"
+readme = "readme.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -6,12 +6,14 @@
 #       extension: .py
 #       format_name: percent
 #       format_version: '1.3'
-#       jupytext_version: 1.16.1
+#       jupytext_version: 1.16.2
 #   kernelspec:
 #     display_name: qudit
 #     language: python
 #     name: qudit
 # ---
+
+from functools import cache
 
 # %%
 import matplotlib.pyplot as plt
@@ -100,6 +102,7 @@ class Hint(Gate):
     def _qid_shape_(self):
         return (4,)
 
+    @cache
     def _unitary_(self):
         return expm(
             np.array(
@@ -132,6 +135,7 @@ class Hhop(Gate):
     def _qid_shape_(self):
         return (4, 4, 4, 4)
 
+    @cache
     def _unitary_(self):
         return expm(
             np.array(
@@ -145,25 +149,25 @@ class Hhop(Gate):
                         TensorProduct(
                             sy_gamma_2 * sy_gamma_5,
                             sy_gamma_1 * sy_gamma_5,
-                            sy_gamma_5 * sy_gamma_1,
+                            sy_gamma_1 * sy_gamma_5,
                             sy_gamma_2,
                         )
                         - TensorProduct(
                             sy_gamma_1 * sy_gamma_5,
                             sy_gamma_2 * sy_gamma_5,
-                            sy_gamma_5 * sy_gamma_1,
+                            sy_gamma_1 * sy_gamma_5,
                             sy_gamma_2,
                         )
                         + TensorProduct(
                             sy_gamma_4 * sy_gamma_5,
                             sy_gamma_3 * sy_gamma_5,
-                            sy_gamma_5 * sy_gamma_3,
+                            sy_gamma_3 * sy_gamma_5,
                             sy_gamma_4,
                         )
                         - TensorProduct(
                             sy_gamma_3 * sy_gamma_5,
                             sy_gamma_4 * sy_gamma_5,
-                            sy_gamma_5 * sy_gamma_3,
+                            sy_gamma_3 * sy_gamma_5,
                             sy_gamma_4,
                         )
                     )
@@ -180,14 +184,15 @@ class Hhop(Gate):
 # Hopping term
 
 
-class Haux(Gate):
+class Haux_1(Gate):
     def __init__(self, t=0.1):
         self.t = t
         super()
 
     def _qid_shape_(self):
-        return (4, 4)
+        return (4, 4, 4)
 
+    @cache
     def _unitary_(self):
         return expm(
             np.array(
@@ -195,19 +200,78 @@ class Haux(Gate):
                 * self.t
                 * (-1)
                 * (
-                    TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_2)
-                    + TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_4)
-                )
-                * (
-                    TensorProduct(sy_gamma_5 * sy_gamma_2, sy_gamma_1)
-                    + TensorProduct(sy_gamma_5 * sy_gamma_4, sy_gamma_3)
+                    TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_5, sy_gamma_2)
+                    + TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_5, sy_gamma_4)
                 ),
                 dtype=np.complex128,
             )
         )
 
     def _circuit_diagram_info_(self, args):
-        return ["Haux(x)", "Haux(y)"]
+        return ["Haux(i')", "Haux(j)", "Haux(j')"]
+
+
+class Haux_2(Gate):
+    def __init__(self, t=0.1):
+        self.t = t
+        super()
+
+    def _qid_shape_(self):
+        return (4, 4, 4, 4, 4, 4)
+
+    @cache
+    def _unitary_(self):
+        return expm(
+            np.array(
+                -1j
+                * self.t
+                * (1 / 4)
+                * (
+                    TensorProduct(
+                        sy_gamma_1 * sy_gamma_5,
+                        sy_gamma_5,
+                        sy_gamma_1,
+                        sy_gamma_5 * sy_gamma_2,
+                        sy_gamma_5,
+                        sy_gamma_2,
+                    )
+                    + TensorProduct(
+                        sy_gamma_3 * sy_gamma_5,
+                        sy_gamma_5,
+                        sy_gamma_3,
+                        sy_gamma_5 * sy_gamma_4,
+                        sy_gamma_5,
+                        sy_gamma_4,
+                    )
+                    + TensorProduct(
+                        sy_gamma_1 * sy_gamma_5,
+                        sy_gamma_5,
+                        sy_gamma_3,
+                        sy_gamma_5 * sy_gamma_4,
+                        sy_gamma_5,
+                        sy_gamma_2,
+                    )
+                    + TensorProduct(
+                        sy_gamma_3 * sy_gamma_5,
+                        sy_gamma_5,
+                        sy_gamma_1,
+                        sy_gamma_5 * sy_gamma_2,
+                        sy_gamma_5,
+                        sy_gamma_4,
+                    )
+                ),
+                dtype=np.complex128,
+            )
+        )  # i' - i+1 - (i+1) ' - (j-1)'  - j - j'
+
+    def _circuit_diagram_info_(self, args):
+        return [
+            "Haux(i')",
+            "Haux(i+1)",
+            "Haux(i+1)'" "Haux(j-1)'",
+            "Haux(j)",
+            "Haux(j')",
+        ]
 
 
 # %%
@@ -313,16 +377,28 @@ class QuditFermiHubbard:
                         )
 
                     # auxiliary ham terms
-                    couples = [(0, 3), (3, 2), (2, 1), (1, 0)]
+                    couples = [(0, 1), (1, 2), (2, 3)]
                     for idx, jdx in couples:
                         if first:
                             print(f"Aux {idx} - {jdx}")
                         evolution_circuit.append(
-                            Haux(tau)(
+                            Haux_1(tau)(
                                 self.auxiliary_qubits[idx],
+                                self.physical_qubits[jdx],
                                 self.auxiliary_qubits[jdx],
                             )
                         )
+                    evolution_circuit.append(  # i' - i+1 - (i+1) ' - (j-1)'  - j - j'
+                        Haux_2(tau)(
+                            self.auxiliary_qubits[0],  # i'
+                            self.physical_qubits[1],  # i+1
+                            self.auxiliary_qubits[1],  # (i+1)'
+                            self.auxiliary_qubits[2],  # (j-1)'
+                            self.physical_qubits[3],  # j
+                            self.auxiliary_qubits[3],  # j'
+                        )
+                    )
+
             measures = []
             for idx, qubit in enumerate(self.physical_qubits):
                 measures.append(measure(qubit, key=f"q{idx}"))
@@ -340,6 +416,9 @@ class QuditFermiHubbard:
                 )
             self.tot_results.append((t, result))
 
+            self.plot()
+            plt.show()
+
     def plot(self, sites=None):
 
         if sites is None:
@@ -355,7 +434,9 @@ class QuditFermiHubbard:
             else:
                 label = f"N({site-physical})' up"
                 linestyle = "dotted"
-            plt.plot(self.t, tot_site, "o", label=label, linestyle=linestyle)
+            plt.plot(
+                self.t[: len(tot_site)], tot_site, "o", label=label, linestyle=linestyle
+            )
 
         plt.legend()
 
@@ -439,27 +520,44 @@ qfh.evolve(initial, t, steps_for_step=10, J=J, v=v, repetitions=repetitions)
 qfh.plot()
 
 # %%
-a = (
-    TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_2)
-    + TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_4)
-) * (
-    TensorProduct(sy_gamma_5 * sy_gamma_2, sy_gamma_1)
-    + TensorProduct(sy_gamma_5 * sy_gamma_4, sy_gamma_3)
-)
-a
+-sy_gamma_5 * sy_gamma_2
 
 # %%
-b = (
-    TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_2)
-    + TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_4)
-) * (
-    TensorProduct(sy_gamma_2, sy_gamma_1 * sy_gamma_5)
-    + TensorProduct(sy_gamma_4, sy_gamma_3 * sy_gamma_5)
-)
-
-b
+sy_gamma_2 * sy_gamma_2
 
 # %%
-a == -b
+sy_gamma_4
+
+# %%
+
+# i', i+1, i+1'
+a = -TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_5, sy_gamma_5)
+b = -TensorProduct(sy_gamma_5 * sy_gamma_2, sy_gamma_5, sy_gamma_1)
+
+print(f"Commute: {a*b - b*a == Matrix(np.zeros(a.shape))}")
+print(f"Anticommute: {a*b + b*a == Matrix(np.zeros(a.shape))}")
+
+# %%
+a = -TensorProduct(sy_gamma_5, sy_gamma_5, sy_gamma_5)
+b = -TensorProduct(sy_gamma_5 * sy_gamma_2, sy_gamma_5, sy_gamma_1)
+
+print(f"Commute: {a*b - b*a == Matrix(np.zeros(a.shape))}")
+print(f"Anticommute: {a*b + b*a == Matrix(np.zeros(a.shape))}")
+
+# %%
+# 10', 11, 11'
+a = -TensorProduct(sy_gamma_5, sy_gamma_5, sy_gamma_2)
+b = -TensorProduct(sy_gamma_5 * sy_gamma_4, sy_gamma_5, sy_gamma_3)
+
+print(f"Commute: {a*b - b*a == Matrix(np.zeros(a.shape))}")
+print(f"Anticommute: {a*b + b*a == Matrix(np.zeros(a.shape))}")
+
+# %%
+# 10', 11, 11'
+a = -TensorProduct(sy_id, sy_id, sy_gamma_2 * sy_gamma_5)
+b = -TensorProduct(sy_gamma_2 * sy_gamma_5, sy_gamma_5, sy_gamma_1)
+
+print(f"Commute: {a*b - b*a == Matrix(np.zeros(a.shape))}")
+print(f"Anticommute: {a*b + b*a == Matrix(np.zeros(a.shape))}")
 
 # %%

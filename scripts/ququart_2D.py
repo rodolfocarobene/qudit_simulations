@@ -459,15 +459,6 @@ qfh.plot()
 # %%
 
 # %%
-a = (
-    TensorProduct(sy_gamma_2 * sy_gamma_5, sy_gamma_1)
-    - TensorProduct(sy_gamma_1 * sy_gamma_5, sy_gamma_2)
-    + TensorProduct(sy_gamma_4 * sy_gamma_5, sy_gamma_3)
-    - TensorProduct(sy_gamma_3 * sy_gamma_5, sy_gamma_4)
-)
-a
-
-# %%
-sy_gamma_2 * sy_gamma_5 == -sy_gamma_5 * sy_gamma_2
+sy_gamma_5 * sy_gamma_5
 
 # %%
