@@ -1,32 +1,70 @@
-## Files Description:
+## Primitives
 
-### 1. `primitives.py`
+### Pauli Matrices (2x2)
 
-Collection of gates and matrices required for ququart simulations (not a
-notebook).
+These are standard 2x2 Pauli matrices used in quantum mechanics.
 
-### 2. `qiskit_evolve.py`
+- `sx`: Pauli X matrix.
+- `sy`: Pauli Y matrix.
+- `sz`: Pauli Z matrix.
+- `si`: Identity matrix.
 
-This Python script demonstrates the simulation of Fermi-Hubbard evolution using
-Qiskit.
+### Gamma Matrices (4x4)
 
-### 3. `ququart.py`
+These matrices are used to represent extended operations in a 4-dimensional
+space.
 
-This Python script showcases Ququart simulation using Cirq. It includes an
-implementation of evolution dynamics for ququart system using decomposed
-(through OSD) gates.
+- `sy_gamma_1`: Tensor product of `sx` and `si`.
+- `sy_gamma_2`: Tensor product of `sy` and `si`.
+- `sy_gamma_3`: Tensor product of `sz` and `sx`.
+- `sy_gamma_4`: Tensor product of `sz` and `sy`.
+- `sy_gamma_5`: Tensor product of `sz` and `sz`.
+- `sy_id`: Identity matrix (4x4).
 
-### 4. `ququart_2D.py`
+### Bra-Kets for Ququarts
 
-This script implements a simulation of the Fermi-Hubbard model using IBM
-matrices. It supports 2D lattices and exact simulations as well as "shots"
-simulations
+These vectors represent the basis states of a 4-level quantum system.
 
-## General Information:
+- `ket_0`: Basis state |0>.
+- `bra_0`: Dual of `ket_0`.
+- `ket_1`: Basis state |1>.
+- `bra_1`: Dual of `ket_1`.
+- `ket_2`: Basis state |2>.
+- `bra_2`: Dual of `ket_2`.
+- `ket_3`: Basis state |3>.
+- `bra_3`: Dual of `ket_3`.
 
-- **Execution**: These notebooks can be executed using Jupyter with Jupytext.
-  Simply open the notebook in your preferred environment and execute the cells
-  to observe the simulation results.
+### Two-Qudit Gate Definition
 
-  For more information see:
-  [Jupytext: Jupyter Notebooks as Markdown Documents, Julia, Python or R Scripts](https://jupytext.readthedocs.io/en/latest/)
+This gate represents an extended CNOT gate for ququarts.
+
+- `X`: Combination of bra-kets for state transitions.
+- `sy_ucsum`: A composite gate defined using tensor products and `X`.
+- `sy_ad_ucsum`: Adjoint of `sy_ucsum`.
+
+### Custom Cirq Gates
+
+These are custom gates defined for specific operations on ququarts.
+
+#### Rotation Gates
+
+- **X_P_ij**: Rotation around X for the (i, j) states.
+- **Y_P_ij**: Rotation around Y for the (i, j) states.
+- **Z_P_ij**: Rotation around Z for the (i, j) states.
+
+#### Gamma Gates
+
+- **Gamma1**: Gate representing `sy_gamma_1`.
+- **Gamma2**: Gate representing `sy_gamma_2`.
+- **Gamma3**: Gate representing `sy_gamma_3`.
+- **Gamma4**: Gate representing `sy_gamma_4`.
+- **Gamma5**: Gate representing `sy_gamma_5`.
+
+#### Identity Gate
+
+- **Id**: Identity gate for 4-level systems.
+
+#### UCSUM Gates
+
+- **UCSUM**: Composite gate `sy_ucsum`.
+- **UCSUMDag**: Adjoint of the `UCSUM` gate.
