@@ -220,22 +220,3 @@ class UCSUMDag(Gate):
 
     def _circuit_diagram_info_(self, args):
         return ["U+", "c"]
-
-
-class InitialState(Gate):
-    """Gate that prepare an initial state, from the coefficients."""
-
-    def __init__(self, coefficients, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.matrix = np.zeros((256, 256))
-        for idx, val in enumerate(coefficients):
-            self.matrix[idx][0] = val
-
-    def _qid_shape_(self):
-        return (4, 4, 4, 4)
-
-    def _unitary_(self):
-        return self.matrix
-
-    def _circuit_diagram_info_(self, args):
-        return ["init", "init", "init", "init"]
