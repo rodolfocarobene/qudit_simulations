@@ -24,4 +24,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.codespell]
-skip="poetry.lock,pyproject.toml"
+skip=["poetry.lock,pyproject.toml", ".ipynb"]
