@@ -2,21 +2,22 @@ import matplotlib.pyplot as plt
 import netket as nk
 import numpy as np
 from netket import experimental as nkx
-from netket.experimental.dynamics import RK23
+from netket.experimental.dynamics import RK45 as RK
 from src.exact import ExactDynamics, NonVariationalVectorState
 
 TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
 
-Lx, Ly = 2, 2
+Lx, Ly = 2, 3
 thop = -1  # tunneling/hopping
 U = 0.5  # coulomb
+NUM_FERMIONS = 2
 
 # create the graph our fermions can hop on
 g = nk.graph.Grid([Lx, Ly], pbc=False)
 n_sites = g.n_nodes
 
 # create a hilbert space with 2 up and 2 down spins
-hi = nkx.hilbert.SpinOrbitalFermions(n_sites, n_fermions=2)
+hi = nkx.hilbert.SpinOrbitalFermions(n_sites, n_fermions=NUM_FERMIONS)
 
 
 def c(site):
@@ -48,26 +49,15 @@ for idx, s in enumerate(g.sites):
 
 # make the initial state
 occupations = [
-    [1, 1, 0, 0],  # A
-    [1, 0, 0, 1],  # B
-    [1, 0, 1, 0],  # C
-    [0, 1, 1, 0],  # D
-    [0, 1, 0, 1],  # E
-    [0, 0, 1, 1],  # F
+    [1, 1, 0, 0, 0, 0],  # A
+    [1, 0, 1, 0, 0, 0],  # B
 ]
 
 occupation = np.stack(occupations, axis=0)
 
 idx = hi.states_to_numbers(occupation)
 vector = np.zeros((hi.n_states,), dtype=np.complex128)
-coeffs = [
-    0.87806136 + 0.47854806j,
-    0.89290143 + 0.45025218j,
-    0.14688749 + 0.98915321j,
-    0.82658314 + 0.56281463j,
-    0.59238681 + 0.80565369j,
-    0.84171922 + 0.5399155j,
-]
+coeffs = [1, 1]  # 0.47430418 + 0.48681048j, 0.64455866 + 0.59635361j]
 for i, j in enumerate(idx):
     vector[j] = coeffs[i]
 vector /= np.linalg.norm(vector)
@@ -85,13 +75,13 @@ print("Epot:", np.round(vs.expect(epot).mean, 4))
 print("Ham:", np.round(vs.expect(ham).mean, 4))
 
 
-T = 0.1
-dt = 0.025
+T = 0.4
+dt = T / 2
 
-integrator = RK23(dt=dt)
+integrator = RK(dt=dt)
 te = ExactDynamics(
     hi,
-    ekin + epot,
+    ham,
     vs,
     integrator,
     t0=0,
@@ -107,7 +97,7 @@ def _print_obs(step_nr, log_data, driver):
     h = ekin + epot
     N = 4
 
-    energy_str = f"t = {t:.2}\t\t"
+    energy_str = f"t = {t:.4}\t\t"
     energy_str += f"Ekin={np.round(ekin, N)}\t"
     energy_str += f"Pot={np.round(epot, N)}\t"
     energy_str += f"H={np.round(h, N)}\t"
@@ -129,7 +119,8 @@ def _print_obs(step_nr, log_data, driver):
 print("")
 te.run(T, out="dynamics_out", show_progress=False, obs=obs, callback=_print_obs)
 
-times = np.arange(0, T + dt, dt)
+len_t = len(TOTAL_RESULTS["ekin"])
+times = np.arange(0, T + dt, dt)[:len_t]
 
 plt.figure()
 plt.plot(times, TOTAL_RESULTS["ekin"], label="Ekin")
@@ -146,3 +137,5 @@ for idx in range(len(g.sites)):
     plt.plot(times, ev, label=f"n{idx}")
 plt.legend()
 plt.savefig("numbers_evolution.pdf")
+
+print("\n", np.round(TOTAL_RESULTS["nums"][-1], 4))

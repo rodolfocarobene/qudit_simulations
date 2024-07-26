@@ -24,10 +24,10 @@ from netket import experimental as nkx
 
 Lx, Ly = 2, 4
 thop = 1  # tunneling/hopping
-U = 0.01  # coulomb
+U = 0.5  # coulomb
 
 # create the graph our fermions can hop on
-g = nk.graph.Grid([Lx, Ly], pbc=True)
+g = nk.graph.Grid([Lx, Ly], pbc=False)
 n_sites = g.n_nodes
 
 # create a hilbert space with 2 up and 2 down spins
@@ -79,9 +79,9 @@ occupations = np.stack([occupation1, occupation2, occupation3], axis=0)
 
 idxs = hi.states_to_numbers(occupations)
 vector = np.zeros((hi.n_states,), dtype=np.complex128)
-vector[idxs[0]] = 0.9
-vector[idxs[1]] = -0.5j
-vector[idxs[2]] = -1
+vector[idxs[0]] = 1
+vector[idxs[1]] = 0
+vector[idxs[2]] = 0
 
 # other option: check conservatioj of energy
 # vector = np.linalg.eigh(ham.to_dense())[1][:,1]
@@ -99,7 +99,7 @@ dt = 1e-2
 integrator = RK4(dt=dt)
 te = ExactDynamics(
     hi,
-    ham,c
+    ham,
     vs,
     integrator,
     t0=0,
@@ -111,7 +111,7 @@ T = 1.0
 
 
 def _print_obs(step_nr, log_data, driver):
-    # print("log_data = ", log_data)
+    print("log_data = ", log_data)
     return True
 
 
@@ -184,7 +184,7 @@ df
 # plot stuff
 import json
 
-with open("dynamics_out.log", "r") as f:
+with open("dynamics_out.log") as f:
     data = json.load(f)
 # -
 
