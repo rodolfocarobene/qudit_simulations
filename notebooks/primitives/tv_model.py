@@ -33,7 +33,7 @@ def compute_state_exp_numbers(qudits, state):
     return nums
 
 
-def compute_state_exp_hamiltonian(qudits, state, T, V):
+def compute_state_exp_hamiltonian_tv(qudits, state, T, V):
     ham_k = 0
     ham_p = 0
 
@@ -157,7 +157,7 @@ def evolve_gate(gate):
     class evolved(Gate):
         def __init__(self, C=1, t=0.1, *args, **kwargs):
             gate_mat = np.array(gate()._unitary_(), dtype=np.complex128)
-            if (gate_mat != np.conjugate(gate_mat.T)).any():
+            if not (np.isclose(gate_mat, np.conjugate(gate_mat.T), 1e-7)).any():
                 print("Not hermitian")
             self.C = C  # coefficient
             self.t = t  # evolution time

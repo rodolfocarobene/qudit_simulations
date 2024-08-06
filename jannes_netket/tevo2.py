@@ -1,102 +1,91 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.15.1
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
-# ---
-
-import json
-
 import matplotlib.pyplot as plt
-
-# +
 import netket as nk
 import numpy as np
 from netket import experimental as nkx
+from netket.experimental.dynamics import RK45 as RK
+from src.exact import ExactDynamics, NonVariationalVectorState
 
-Lx, Ly = 2, 4
-thop = 1  # tunneling/hopping
+TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
+
+Lx, Ly = 2, 2
+J = -1  # tunneling/hopping
 U = 0.5  # coulomb
+NUM_FERMIONS = 4
 
 # create the graph our fermions can hop on
 g = nk.graph.Grid([Lx, Ly], pbc=False)
 n_sites = g.n_nodes
 
 # create a hilbert space with 2 up and 2 down spins
-hi = nkx.hilbert.SpinOrbitalFermions(n_sites, n_fermions=2)
+hi = nkx.hilbert.SpinOrbitalFermions(n_sites, s=0.5, n_fermions=NUM_FERMIONS)
 
 
-def c(site):
-    return nkx.operator.fermion.destroy(hi, site)
+def c(site, sz):
+    return nkx.operator.fermion.destroy(hi, site, sz)
 
 
-def cdag(site):
-    return nkx.operator.fermion.create(hi, site)
+def cdag(site, sz):
+    return nkx.operator.fermion.create(hi, site, sz)
 
 
-def nc(site):
-    return nkx.operator.fermion.number(hi, site)
+def nc(site, sz):
+    return nkx.operator.fermion.number(hi, site, sz)
 
 
 ekin = 0.0
 epot = 0.0
 for u, v in g.edges():
-    ekin += -thop * cdag(u) * c(v) - thop * cdag(v) * c(u)
-    epot += U * nc(u) * nc(v)
+    for sz in [-1, +1]:
+        ekin += J * (cdag(u, sz) * c(v, sz) + cdag(v, sz) * c(u, sz))
+for u, site in enumerate(g.sites):
+    epot += U * nc(u, 1) * nc(u, -1)
 
 ham = ekin + epot
 
 obs = {
-    "n0": nc(0),
-    "n1": nc(1),
-    "n2": nc(2),
-    "nn": nc(0) * nc(1),
     "ekin": ekin,
     "epot": epot,
 }
-
-print("Hamiltonian =", ham.operator_string())
+for idx, s in enumerate(g.sites):
+    obs[f"n{idx}"] = nc(idx, 1)
+    obs[f"n{idx}'"] = nc(idx, -1)
 
 # make the initial state
-occupation1 = np.zeros(hi.size, dtype="bool")
-occupation1[0] = True
-occupation1[1] = True
-occupation2 = np.zeros(hi.size, dtype="bool")
-occupation2[1] = True
-occupation2[2] = True
-occupation3 = np.zeros(hi.size, dtype="bool")
-occupation3[2] = True
-occupation3[3] = True
-occupations = np.stack([occupation1, occupation2, occupation3], axis=0)
+occupations = [
+    # [1, 1, 0, 0] + [1, 1, 0, 0],
+    [1, 1, 0, 0] + [1, 1, 0, 0],
+    [1, 1, 0, 0] + [1, 0, 0, 1],
+]
 
-idxs = hi.states_to_numbers(occupations)
+occupation = np.stack(occupations, axis=0)
+
+idx = hi.states_to_numbers(occupation)
 vector = np.zeros((hi.n_states,), dtype=np.complex128)
-vector[idxs[0]] = 1
-vector[idxs[1]] = 0
-vector[idxs[2]] = 0
-
-# other option: check conservatioj of energy
-# vector = np.linalg.eigh(ham.to_dense())[1][:,1]
+coeffs = [1, 1]  # + 4j, 2j + 1]
+for i, j in enumerate(idx):
+    vector[j] = coeffs[i]
 vector /= np.linalg.norm(vector)
-v0 = vector.copy()
+
+vs = NonVariationalVectorState(hi, vector)
+
+print()
+for i in range(len(g.sites)):
+    exp_n = vs.expect(nc(i, 1)).mean
+    if exp_n != 0:
+        print(f"N({i}): {exp_n}")
+    exp_n = vs.expect(nc(i, -1)).mean
+    if exp_n != 0:
+        print(f"N({i})': {exp_n}")
+
+print("\nEkin:", np.round(vs.expect(ekin).mean, 4))
+print("Epot:", np.round(vs.expect(epot).mean, 4))
+print("Ham:", np.round(vs.expect(ham).mean, 4))
 
 
-from netket.experimental.dynamics import RK4
-from src.exact import ExactDynamics, NonVariationalVectorState
+T = 0.6
+dt = T / 8
 
-vs = NonVariationalVectorState(hi, v0.copy())
-print("initial energy:", vs.expect(ham))
-
-dt = 1e-2
-integrator = RK4(dt=dt)
+integrator = RK(dt=dt)
 te = ExactDynamics(
     hi,
     ham,
@@ -107,95 +96,57 @@ te = ExactDynamics(
     sparse=True,
 )
 
-T = 1.0
-
 
 def _print_obs(step_nr, log_data, driver):
-    print("log_data = ", log_data)
+    t = log_data["t"]
+    ekin = float(np.real(log_data["ekin"].mean))
+    epot = float(np.real(log_data["epot"].mean))
+    h = ekin + epot
+    N = 4
+
+    energy_str = f"t = {t:.4}\t\t"
+    energy_str += f"Ekin={np.round(ekin, N)}\t"
+    energy_str += f"Pot={np.round(epot, N)}\t"
+    energy_str += f"H={np.round(h, N)}\t"
+    print(energy_str)
+
+    global TOTAL_RESULTS
+    TOTAL_RESULTS["ham"].append(h)
+    TOTAL_RESULTS["ekin"].append(ekin)
+    TOTAL_RESULTS["epot"].append(epot)
+
+    nums = []
+    for idx in range(len(g.sites)):
+        nums.append(float(np.real(log_data[f"n{idx}"].mean)))
+        nums.append(float(np.real(log_data[f"n{idx}'"].mean)))
+    TOTAL_RESULTS["nums"].append(nums)
+
     return True
 
 
-te.run(T, out="dynamics_out", show_progress=True, obs=obs, callback=_print_obs)
+print("")
+te.run(T, out="dynamics_out", show_progress=False, obs=obs, callback=_print_obs)
 
+len_t = len(TOTAL_RESULTS["ekin"])
+times = np.arange(0, T + dt, dt)[:len_t]
 
-# +
-# do also the expm approach
+plt.figure()
+plt.plot(times, TOTAL_RESULTS["ekin"], label="Ekin")
+plt.plot(times, TOTAL_RESULTS["epot"], label="Epot")
+plt.plot(times, TOTAL_RESULTS["ham"], label="Ham")
+plt.legend()
+plt.savefig("hamiltonian_evolution.pdf")
 
+plt.figure()
 
-def taylor_expm(n_order=3):  # order of the error in dt
-    Hmat = ham.to_dense()
-    print("Hmat = ", Hmat.shape)
-    print(dt)
-    Hn = np.eye(hi.n_states, dtype=complex)  # order H^n
-    coeffn = complex(1)
-    exp_ham_dt = Hn
+result_nums = TOTAL_RESULTS["nums"]
+for idx in range(len(g.sites) * 2):
+    ev = [result[idx] for result in result_nums]
+    name = idx // 2
+    if idx % 2 == 1:
+        name = str(name) + "'"
+    plt.plot(times, ev, label=f"n{name}")
+plt.legend()
+plt.savefig("numbers_evolution.pdf")
 
-    for n in range(1, n_order):
-        coeffn *= -1j * dt / n
-        Hn = Hn @ Hmat
-        exp_ham_dt = exp_ham_dt + coeffn * Hn
-    return exp_ham_dt
-
-
-exp_ham_dt = taylor_expm(n_order=4)
-
-exp_ham_dt.shape
-# -
-
-dt
-
-# +
-# import scipy
-
-
-# scipy.linalg.expm(-1j*dt*Hmat)
-# -
-
-exp_ham_dt
-
-obs_mats = {}
-for k, o in obs.items():
-    obs_mats[k] = o.to_sparse()
-
-# +
-import pandas as pd
-
-obs_expm = []
-Hmat = ham.to_sparse()
-
-vt = v0.copy()
-print("Initial energy", vt.conj().dot(Hmat.dot(vt)))
-
-for t in np.arange(0, T, dt):
-    log_data = {
-        "t": t,
-        "Generator": np.sum(vt.conj().dot(Hmat.dot(vt))).real,
-    }
-    for k, o in obs_mats.items():
-        log_data[k] = np.sum(vt.conj().dot(o.dot(vt))).real
-    obs_expm.append(log_data)
-    vt = exp_ham_dt.dot(vt)
-    vt /= np.linalg.norm(vt)
-
-df = pd.DataFrame(obs_expm)
-df
-
-# +
-# plot stuff
-import json
-
-with open("dynamics_out.log") as f:
-    data = json.load(f)
-# -
-
-for key in ["Generator"] + list(obs.keys()):
-    print(key)
-    ts = data["t"]["value"]
-    values = data[key]["Mean"]["real"]
-    if len(ts) == len(values) + 1:
-        ts = ts[1:]
-    plt.plot(ts, values, label="Schrodinger")
-    plt.plot(df["t"].values, df[key].values, label="Expm", linestyle="--")
-    plt.legend()
-    # plt.yscale('log')
-    plt.savefig("tevo2.pdf")
+print("\n", np.round(TOTAL_RESULTS["nums"][-1], 4))

@@ -55,9 +55,7 @@ class X_P_ij(Gate):
         return (4,)
 
     def _unitary_(self):
-        matrix = np.array(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
-        )
+        matrix = np.eye(4, dtype=complex)
         matrix[self.i][self.i] = matrix[self.j][self.j] = np.cos(self.phase / 2)
         matrix[self.j][self.i] = matrix[self.i][self.j] = -1j * np.sin(self.phase / 2)
         return matrix
@@ -80,9 +78,7 @@ class Y_P_ij(Gate):
         return (4,)
 
     def _unitary_(self):
-        matrix = np.array(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
-        )
+        matrix = np.eye(4, dtype=complex)
         matrix[self.i][self.i] = matrix[self.j][self.j] = np.cos(self.phase / 2)
         matrix[self.j][self.i] = np.sin(self.phase / 2)
         matrix[self.i][self.j] = -np.sin(self.phase / 2)
@@ -106,10 +102,7 @@ class Z_P_ij(Gate):
         return (4,)
 
     def _unitary_(self):
-        matrix = np.array(
-            [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=np.complex_
-        )
-
+        matrix = np.eye(4, dtype=complex)
         matrix[self.i][self.i] = np.exp(-1j * self.phase / 2)
         matrix[self.j][self.j] = np.exp(1j * self.phase / 2)
         return matrix
