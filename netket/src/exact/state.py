@@ -1,6 +1,7 @@
 import jax
 from flax.core.scope import CollectionFilter, DenyList  # noqa: F401
 from jax import numpy as jnp
+
 from netket import jax as nkjax
 from netket.hilbert import AbstractHilbert
 from netket.utils.types import Array, DType, Union

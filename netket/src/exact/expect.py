@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+
 from netket.operator import DiscreteOperator
 from netket.stats import Stats
 from netket.utils.types import Array, Union

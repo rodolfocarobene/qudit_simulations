@@ -1,16 +1,30 @@
+import json
+
 import matplotlib.pyplot as plt
-import netket as nk
 import numpy as np
-from netket import experimental as nkx
-from netket.experimental.dynamics import RK45 as RK
 from src.exact import ExactDynamics, NonVariationalVectorState
 
-TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
+import netket as nk
+from netket import experimental as nkx
+from netket.experimental.dynamics import RK45 as RK
 
-Lx, Ly = 2, 2
+TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
+T = 1.5
+num_steps = 30
+dt = T / num_steps  # time step
+TOTAL_RESULTS["temps"] = np.linspace(0, T, num_steps + 1, True).tolist()
+
+Lx, Ly = 2, 3
 J = -1  # tunneling/hopping
 U = 0.5  # coulomb
 NUM_FERMIONS = 4
+
+# make the initial state
+occupations = [
+    [1, 1, 0, 0, 0, 0] + [1, 1, 0, 0, 0, 0],
+    [1, 1, 0, 0, 0, 0] + [1, 0, 0, 0, 1, 0],
+]
+coeffs = [1, 1]
 
 # create the graph our fermions can hop on
 g = nk.graph.Grid([Lx, Ly], pbc=False)
@@ -50,18 +64,11 @@ for idx, s in enumerate(g.sites):
     obs[f"n{idx}"] = nc(idx, 1)
     obs[f"n{idx}'"] = nc(idx, -1)
 
-# make the initial state
-occupations = [
-    # [1, 1, 0, 0] + [1, 1, 0, 0],
-    [1, 1, 0, 0] + [1, 1, 0, 0],
-    [1, 1, 0, 0] + [1, 0, 0, 1],
-]
 
 occupation = np.stack(occupations, axis=0)
 
 idx = hi.states_to_numbers(occupation)
 vector = np.zeros((hi.n_states,), dtype=np.complex128)
-coeffs = [1, 1]  # + 4j, 2j + 1]
 for i, j in enumerate(idx):
     vector[j] = coeffs[i]
 vector /= np.linalg.norm(vector)
@@ -81,9 +88,6 @@ print("\nEkin:", np.round(vs.expect(ekin).mean, 4))
 print("Epot:", np.round(vs.expect(epot).mean, 4))
 print("Ham:", np.round(vs.expect(ham).mean, 4))
 
-
-T = 0.6
-dt = T / 8
 
 integrator = RK(dt=dt)
 te = ExactDynamics(
@@ -135,7 +139,7 @@ plt.plot(times, TOTAL_RESULTS["ekin"], label="Ekin")
 plt.plot(times, TOTAL_RESULTS["epot"], label="Epot")
 plt.plot(times, TOTAL_RESULTS["ham"], label="Ham")
 plt.legend()
-plt.savefig("hamiltonian_evolution.pdf")
+plt.savefig("spinful_ham.pdf")
 
 plt.figure()
 
@@ -147,6 +151,9 @@ for idx in range(len(g.sites) * 2):
         name = str(name) + "'"
     plt.plot(times, ev, label=f"n{name}")
 plt.legend()
-plt.savefig("numbers_evolution.pdf")
+plt.savefig("spinful_num.pdf")
 
 print("\n", np.round(TOTAL_RESULTS["nums"][-1], 4))
+
+with open("spinful_data.json", "w") as file:
+    json.dump(TOTAL_RESULTS, file)

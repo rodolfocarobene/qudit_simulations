@@ -1,16 +1,30 @@
+import json
+
 import matplotlib.pyplot as plt
-import netket as nk
 import numpy as np
-from netket import experimental as nkx
-from netket.experimental.dynamics import RK45 as RK
 from src.exact import ExactDynamics, NonVariationalVectorState
 
+import netket as nk
+from netket import experimental as nkx
+from netket.experimental.dynamics import RK45 as RK
+
 TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
+T = 5  # final time
+num_steps = 100
+dt = T / num_steps  # time step
+TOTAL_RESULTS["temps"] = np.linspace(0, T, num_steps + 1, True).tolist()
 
 Lx, Ly = 2, 3
 thop = -1  # tunneling/hopping
 U = 0.5  # coulomb
 NUM_FERMIONS = 2
+
+# the initial state is a superposition aA +bB
+occupations = [
+    [1, 1, 0, 0, 0, 0],  # A
+    [1, 0, 1, 0, 0, 0],  # B
+]
+coeffs = [1, 1]  # a, b
 
 # create the graph our fermions can hop on
 g = nk.graph.Grid([Lx, Ly], pbc=False)
@@ -47,17 +61,11 @@ obs = {
 for idx, s in enumerate(g.sites):
     obs[f"n{idx}"] = nc(idx)
 
-# make the initial state
-occupations = [
-    [1, 1, 0, 0, 0, 0],  # A
-    [1, 0, 1, 0, 0, 0],  # B
-]
 
 occupation = np.stack(occupations, axis=0)
 
 idx = hi.states_to_numbers(occupation)
 vector = np.zeros((hi.n_states,), dtype=np.complex128)
-coeffs = [1, 1]  # 0.47430418 + 0.48681048j, 0.64455866 + 0.59635361j]
 for i, j in enumerate(idx):
     vector[j] = coeffs[i]
 vector /= np.linalg.norm(vector)
@@ -74,9 +82,6 @@ print("\nEkin:", np.round(vs.expect(ekin).mean, 4))
 print("Epot:", np.round(vs.expect(epot).mean, 4))
 print("Ham:", np.round(vs.expect(ham).mean, 4))
 
-
-T = 0.4
-dt = T / 2
 
 integrator = RK(dt=dt)
 te = ExactDynamics(
@@ -127,7 +132,7 @@ plt.plot(times, TOTAL_RESULTS["ekin"], label="Ekin")
 plt.plot(times, TOTAL_RESULTS["epot"], label="Epot")
 plt.plot(times, TOTAL_RESULTS["ham"], label="Ham")
 plt.legend()
-plt.savefig("hamiltonian_evolution.pdf")
+plt.savefig("tv_model_ham.pdf")
 
 plt.figure()
 
@@ -136,6 +141,9 @@ for idx in range(len(g.sites)):
     ev = [result[idx] for result in result_nums]
     plt.plot(times, ev, label=f"n{idx}")
 plt.legend()
-plt.savefig("numbers_evolution.pdf")
+plt.savefig("tv_model_num.pdf")
 
 print("\n", np.round(TOTAL_RESULTS["nums"][-1], 4))
+
+with open("tv_model_data.json", "w") as file:
+    json.dump(TOTAL_RESULTS, file)
