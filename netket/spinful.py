@@ -9,8 +9,8 @@ from netket import experimental as nkx
 from netket.experimental.dynamics import RK45 as RK
 
 TOTAL_RESULTS = {"ham": [], "ekin": [], "epot": [], "nums": []}
-T = 1.5
-num_steps = 30
+T = 0.6
+num_steps = 20
 dt = T / num_steps  # time step
 TOTAL_RESULTS["temps"] = np.linspace(0, T, num_steps + 1, True).tolist()
 
