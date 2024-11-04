@@ -2,7 +2,7 @@
 name = "qudit_simulation"
 version = "0.1.0"
 description = "Qudit simulations"
-authors = ["Rodolfo Carobene <rodolfo.carobene@gmail.com>"]
+authors = ["Rodolfo Carobene <rodolfo.carobene@gmail.com>", "Jannes Nys", "Stefano Barison"]
 license = "Apache 2.0"
 readme = "readme.md"
 package-mode = false
